@@ -11,12 +11,12 @@ import { statSync } from 'fs';
 
 // ============ 配置 ============
 const CONFIG = {
-  // Claude CLI 資料目錄（溫水的設定是 symlink 到 /mnt/e_drive/claude-config）
-  claudeDir: process.env.CLAUDE_DIR || '/home/rex/.claude',
-  projectsDir: process.env.CLAUDE_PROJECTS_DIR || '/home/rex/.claude/projects',
+  // Claude CLI 資料目錄（真實路徑，避免 symlink 問題）
+  claudeDir: process.env.CLAUDE_DIR || '/mnt/e_drive/claude-config',
+  projectsDir: process.env.CLAUDE_PROJECTS_DIR || '/mnt/e_drive/claude-config/projects',
 
   // WebSocket 設定
-  wsPort: parseInt(process.env.WS_PORT) || 8052,
+  wsPort: parseInt(process.env.WS_PORT) || 8053,
 
   // 狀態判定時間閾值（毫秒）
   workingThreshold: 3000,  // 3 秒內有更新 = 工作中
@@ -128,6 +128,21 @@ function registerSession(filePath) {
   const id = extractSessionId(filePath);
   const project = extractProjectName(filePath);
 
+  // 檢查檔案最後修改時間，只追蹤最近 10 分鐘內活躍的 session
+  try {
+    const stats = statSync(filePath);
+    const fileAge = Date.now() - stats.mtimeMs;
+    const maxAge = 10 * 60 * 1000; // 10 分鐘
+
+    if (fileAge > maxAge) {
+      // 舊檔案，不追蹤
+      return null;
+    }
+  } catch (err) {
+    // 檔案可能已被刪除
+    return null;
+  }
+
   // 檢查是否超過上限
   if (sessions.size >= CONFIG.maxSessions && !sessions.has(id)) {
     console.log(`[Session] 達到上限 ${CONFIG.maxSessions}，忽略新 session: ${id}`);
@@ -227,30 +242,33 @@ function checkIdleStatus() {
 // ============ 檔案監控 ============
 
 function initWatcher() {
-  const watchPath = resolve(CONFIG.projectsDir, '**/*.jsonl');
+  const watchPath = CONFIG.projectsDir;
 
   console.log(`[Watcher] 監控路徑: ${watchPath}`);
 
   const watcher = watch(watchPath, {
-    ignored: /(^|[\/\\])\../, // 忽略隱藏檔案
+    ignored: [
+      /(^|[\/\\])\../, // 忽略隱藏檔案
+      /(^|[\/\\])node_modules/, // 忽略 node_modules
+    ],
     persistent: true,
     ignoreInitial: false, // 初始化時也觸發 add 事件
-    awaitWriteFinish: {
-      stabilityThreshold: 500,
-      pollInterval: 100,
-    },
+    depth: 99, // 遞歸深度
   });
 
   watcher
     .on('add', (path) => {
+      if (!path.endsWith('.jsonl')) return; // 只處理 .jsonl 檔案
       console.log(`[Watcher] 新增檔案: ${path}`);
       registerSession(path);
     })
     .on('change', (path) => {
+      if (!path.endsWith('.jsonl')) return;
       console.log(`[Watcher] 變更檔案: ${path}`);
       updateSessionWorking(path);
     })
     .on('unlink', (path) => {
+      if (!path.endsWith('.jsonl')) return;
       console.log(`[Watcher] 刪除檔案: ${path}`);
       closeSession(path);
     })

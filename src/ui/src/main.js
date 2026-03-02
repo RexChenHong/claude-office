@@ -9,7 +9,7 @@ import { Application, Container, Graphics, Text, Assets } from 'pixi.js';
 // ============ 配置 ============
 const CONFIG = {
   // WebSocket 服務地址
-  wsUrl: `ws://${window.location.hostname}:8052`,
+  wsUrl: `ws://${window.location.hostname}:8053`,
 
   // 場景尺寸
   width: 1200,
