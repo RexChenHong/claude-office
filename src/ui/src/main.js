@@ -31,6 +31,7 @@ let ws = null;
 let office = null;
 const characterSprites = new Map();
 const sessionAssignments = new Map(); // sessionId -> characterId
+const sessionDetails = new Map(); // sessionId -> { project, status, lastUpdate }
 let nextCharacterIndex = 0;
 
 // ============ WebSocket 連接 ============
@@ -127,6 +128,12 @@ function handleSync(sessions) {
 function handleSessionOpen(sessionId, project) {
   console.log(`[Session] 開啟: ${sessionId}`);
   assignCharacterToSession(sessionId, project);
+  sessionDetails.set(sessionId, {
+    project,
+    status: 'open',
+    lastUpdate: Date.now(),
+  });
+  renderSessionPanel();
 }
 
 function handleSessionWorking(sessionId) {
@@ -142,6 +149,8 @@ function handleSessionWorking(sessionId) {
     moveToDesk(sprite);
     startTypingAnimation(sprite);
   }
+
+  updateSessionInfo(sessionId, 'working');
 }
 
 function handleSessionIdle(sessionId) {
@@ -157,6 +166,8 @@ function handleSessionIdle(sessionId) {
     stopTypingAnimation(sprite);
     startIdleAnimation(sprite);
   }
+
+  updateSessionInfo(sessionId, 'idle');
 }
 
 function handleSessionClose(sessionId) {
@@ -176,6 +187,8 @@ function handleSessionClose(sessionId) {
   }
 
   sessionAssignments.delete(sessionId);
+  sessionDetails.delete(sessionId);
+  renderSessionPanel();
 }
 
 function assignCharacterToSession(sessionId, project) {
@@ -613,6 +626,30 @@ function stopIdleAnimation(sprite) {
     idleAnimations.delete(sprite);
     sprite.alpha = 1;
   }
+}
+
+// ============ Session 資訊面板 ============
+
+function updateSessionInfo(sessionId, status) {
+  sessionDetails.set(sessionId, {
+    status,
+    lastUpdate: Date.now(),
+  });
+  renderSessionPanel();
+}
+
+function renderSessionPanel() {
+  const panel = document.getElementById('session-info');
+  if (!panel) return;
+
+  const activeCount = sessionAssignments.size;
+  const workingCount = Array.from(sessionDetails.values()).filter(s => s.status === 'working').length;
+  const idleCount = activeCount - workingCount;
+
+  panel.innerHTML = `
+    <div>📊 活躍: ${activeCount}/5</div>
+    <div>⌨️ 工作: ${workingCount} | 💤 閒置: ${idleCount}</div>
+  `;
 }
 
 // ============ 啟動 ============
