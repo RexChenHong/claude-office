@@ -618,8 +618,10 @@ function updateAnimations() {
     const elapsed = now - anim.startTime;
     const progress = Math.min(elapsed / anim.duration, 1);
 
-    // 緩動函數（ease-out cubic）
-    const eased = 1 - Math.pow(1 - progress, 3);
+    // 更自然的緩動函數（ease-out-back）
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    const eased = 1 + c3 * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
 
     sprite.x = anim.startX + (anim.targetX - anim.startX) * eased;
     sprite.y = anim.startY + (anim.targetY - anim.startY) * eased;
@@ -667,14 +669,15 @@ function startTypingAnimation(sprite) {
 
   const animate = () => {
     if (!typingAnimations.has(sprite)) return;
-    time += 0.15;
-    // 輕微上下搖晃
-    sprite.y = originalY + Math.sin(time * 3) * 3;
-    sprite.scale.set(1 + Math.sin(time * 5) * 0.02);
+    time += 0.12;
+    // 更自然的打字動畫
+    sprite.y = originalY + Math.sin(time * 2.5) * 2;
+    sprite.scale.set(1 + Math.sin(time * 4) * 0.015);
+    sprite.rotation = Math.sin(time * 3) * 0.02; // 輕微左右搖晃
     requestAnimationFrame(animate);
   };
 
-  typingAnimations.set(sprite, true);
+  typingAnimations.set(sprite, { originalY });
   animate();
 }
 
@@ -692,9 +695,11 @@ function startIdleAnimation(sprite) {
 
   const animate = () => {
     if (!idleAnimations.has(sprite)) return;
-    time += 0.05;
-    // 輕微漂浮
-    sprite.alpha = 0.8 + Math.sin(time) * 0.2;
+    time += 0.03;
+    // 溫和的呼吸動畫
+    const breathe = Math.sin(time) * 0.03;
+    sprite.scale.set(1 + breathe);
+    sprite.alpha = 0.85 + Math.sin(time * 0.8) * 0.15;
     requestAnimationFrame(animate);
   };
 
