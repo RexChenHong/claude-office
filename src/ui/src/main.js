@@ -138,8 +138,9 @@ function handleSessionWorking(sessionId) {
   const sprite = characterSprites.get(charId);
   if (sprite) {
     sprite.state = 'working';
-    moveToDesk(sprite);
     sprite.label.text = '⌨️ 打字中...';
+    moveToDesk(sprite);
+    startTypingAnimation(sprite);
   }
 }
 
@@ -153,6 +154,8 @@ function handleSessionIdle(sessionId) {
   if (sprite) {
     sprite.state = 'waiting';
     sprite.label.text = '📱 滑手機...';
+    stopTypingAnimation(sprite);
+    startIdleAnimation(sprite);
   }
 }
 
@@ -166,6 +169,8 @@ function handleSessionClose(sessionId) {
   if (sprite) {
     sprite.state = 'idle';
     sprite.sessionId = null;
+    stopTypingAnimation(sprite);
+    stopIdleAnimation(sprite);
     moveToLounge(sprite);
     sprite.label.text = `${sprite.charData.name} (休息中)`;
   }
@@ -383,20 +388,135 @@ function createCharacter(config) {
   return char;
 }
 
-// ============ 角色移動 ============
+// ============ 角色移動（平滑動畫） ============
+
+const animations = new Map(); // sprite.id -> animation
+
+function animateTo(sprite, targetX, targetY, duration = 500) {
+  // 取消現有動畫
+  if (animations.has(sprite)) {
+    animations.delete(sprite);
+  }
+
+  const startX = sprite.x;
+  const startY = sprite.y;
+  const startTime = Date.now();
+
+  const animation = {
+    sprite,
+    startX,
+    startY,
+    targetX,
+    targetY,
+    duration,
+    startTime,
+  };
+
+  animations.set(sprite, animation);
+
+  // 使用 PixiJS ticker 驅動動畫
+  if (!app.ticker.has(updateAnimations)) {
+    app.ticker.add(updateAnimations);
+  }
+}
+
+function updateAnimations() {
+  const now = Date.now();
+  const completed = [];
+
+  animations.forEach((anim, sprite) => {
+    const elapsed = now - anim.startTime;
+    const progress = Math.min(elapsed / anim.duration, 1);
+
+    // 緩動函數（ease-out cubic）
+    const eased = 1 - Math.pow(1 - progress, 3);
+
+    sprite.x = anim.startX + (anim.targetX - anim.startX) * eased;
+    sprite.y = anim.startY + (anim.targetY - anim.startY) * eased;
+
+    if (progress >= 1) {
+      completed.push(sprite);
+    }
+  });
+
+  completed.forEach(sprite => animations.delete(sprite));
+
+  // 如果沒有動畫了，移除 ticker
+  if (animations.size === 0) {
+    app.ticker.remove(updateAnimations);
+  }
+}
 
 function moveToDesk(sprite) {
-  // 移動到工作區
   const charIndex = CONFIG.characters.findIndex(c => c.id === sprite.charData.id);
-  sprite.x = 700 + (charIndex % 3) * 180;
-  sprite.y = 200 + Math.floor(charIndex / 3) * 280;
+  const targetX = 700 + (charIndex % 3) * 180;
+  const targetY = 200 + Math.floor(charIndex / 3) * 280;
+  animateTo(sprite, targetX, targetY, 600);
 }
 
 function moveToLounge(sprite) {
-  // 移動到休息區
   const charIndex = CONFIG.characters.findIndex(c => c.id === sprite.charData.id);
-  sprite.x = 100 + (charIndex % 3) * 150;
-  sprite.y = 200 + Math.floor(charIndex / 3) * 280;
+  const targetX = 100 + (charIndex % 3) * 150;
+  const targetY = 200 + Math.floor(charIndex / 3) * 280;
+  animateTo(sprite, targetX, targetY, 600);
+}
+
+// ============ 打字動畫 ============
+
+const typingAnimations = new Map();
+const idleAnimations = new Map();
+
+function startTypingAnimation(sprite) {
+  // 停止閒置動畫
+  stopIdleAnimation(sprite);
+
+  if (typingAnimations.has(sprite)) return;
+
+  const originalY = sprite.y;
+  let time = 0;
+
+  const animate = () => {
+    if (!typingAnimations.has(sprite)) return;
+    time += 0.15;
+    // 輕微上下搖晃
+    sprite.y = originalY + Math.sin(time * 3) * 3;
+    sprite.scale.set(1 + Math.sin(time * 5) * 0.02);
+    requestAnimationFrame(animate);
+  };
+
+  typingAnimations.set(sprite, true);
+  animate();
+}
+
+function stopTypingAnimation(sprite) {
+  if (typingAnimations.has(sprite)) {
+    typingAnimations.delete(sprite);
+    sprite.scale.set(1);
+  }
+}
+
+function startIdleAnimation(sprite) {
+  if (idleAnimations.has(sprite)) return;
+
+  let time = 0;
+
+  const animate = () => {
+    if (!idleAnimations.has(sprite)) return;
+    time += 0.05;
+    // 輕微漂浮
+    sprite.alpha = 0.8 + Math.sin(time) * 0.2;
+    requestAnimationFrame(animate);
+  };
+
+  idleAnimations.set(sprite, true);
+  animate();
+}
+
+function stopIdleAnimation(sprite) {
+  if (idleAnimations.has(sprite)) {
+    idleAnimations.delete(sprite);
+    sprite.alpha = 1;
+  }
 }
 
 // ============ 啟動 ============
