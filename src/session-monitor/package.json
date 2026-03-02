@@ -1,0 +1,17 @@
+{
+  "name": "claude-office-session-monitor",
+  "version": "0.1.0",
+  "description": "Monitor Claude CLI session states and broadcast via WebSocket",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.0",
+    "ws": "^8.18.0"
+  },
+  "author": "RexChenHong",
+  "license": "MIT"
+}
