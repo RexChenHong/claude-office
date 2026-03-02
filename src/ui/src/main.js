@@ -184,12 +184,7 @@ function assignCharacterToSession(sessionId, project) {
   if (sprite) {
     sprite.sessionId = sessionId;
     sessionAssignments.set(sessionId, charConfig.id);
-
-    // 移動到辦公桌
-    sprite.state = 'working';
-    moveToDesk(sprite);
-    sprite.label.text = `${sprite.charData.name} (工作中)`;
-
+    // 只分配，不改變狀態（狀態由 handleSessionWorking/handleSessionIdle 處理）
     console.log(`[Assign] Session ${sessionId} → 角色 ${charConfig.name}`);
   }
 }
