@@ -1,20 +1,24 @@
 # Claude Office - TODO 清單
 
-## 🔴 等待確認
-
-- [ ] 角色比例確認：Q 版（2.5 頭身）vs 正常比例（6 頭身）？
-- [ ] 美術來源確認：
-  - AI 生成（Stable Diffusion + 原神 LoRA）？
-  - 委託繪師？
-  - 購買現成素材？
-
-## 🟡 下一階段任務
+## ✅ 已完成
 
 ### Phase 1: 基礎建設
-- [ ] 建立 session-monitor 服務骨架
-- [ ] 建立 ui 前端專案（PixiJS + Vite）
-- [ ] 設定開發環境（Node.js、npm/pnpm）
-- [ ] 測試 OpenClaw sessions_list API 調用
+- [x] 建立 session-monitor 服務骨架
+- [x] 建立 ui 前端專案（PixiJS + Vite）
+- [x] 設定開發環境（Node.js、npm/pnpm）
+- [x] 實現 Claude CLI Session 狀態監控邏輯
+- [x] 實現 WebSocket 推送
+- [x] 實現 PixiJS 場景渲染
+- [x] 實現角色狀態機（臨時色塊）
+- [x] 修正 symlink 監控問題
+- [x] 增加活躍 session 過濾機制
+
+## 🔴 等待確認
+
+- [x] 角色比例確認：正常比例（6 頭身）✅
+- [x] 美術來源確認：AI 生成（Stable Diffusion + 原神 LoRA）✅
+
+## 🟡 下一階段任務
 
 ### Phase 2: 美術資產
 - [ ] 設計辦公室場景背景
@@ -22,15 +26,13 @@
 - [ ] 製作角色動畫 sprite sheet
 - [ ] 製作辦公桌/沙發等道具
 
-### Phase 3: 核心功能
-- [ ] 實現 Session 狀態監控邏輯
-- [ ] 實現 WebSocket 推送
-- [ ] 實現 PixiJS 場景渲染
-- [ ] 實現角色狀態機
+### Phase 3: 核心功能優化
 - [ ] 實現動畫過渡系統
+- [ ] 角色移動動畫（休息區 → 工作區）
+- [ ] 角色工作動畫（打字效果）
 
 ### Phase 4: 部署
-- [ ] 設定 Port 8051/8052 服務
+- [x] 設定 Port 8053/8054 服務
 - [ ] 效能測試（確認 <10% 硬體使用）
 - [ ] 瀏覽器兼容測試（Chrome）
 

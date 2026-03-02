@@ -33,6 +33,19 @@
 
 ## 更新日誌
 
+### 2026-03-02 23:45
+- **修正 symlink 監控問題**
+  - 發現 chokidar 無法監控 symlink 目錄
+  - 修改配置使用真實路徑：`/mnt/e_drive/claude-config/projects`
+- **增加活躍 session 過濾**
+  - 只追蹤最近 10 分鐘內有更新的 session
+  - 避免載入大量歷史 session 檔案
+- **服務驗證**
+  - Session monitor 成功啟動在 8053
+  - 前端啟動在 8054（8051-8053 被佔用）
+  - 成功追蹤 2 個活躍 session
+  - 狀態變化正常：working ↔ idle
+
 ### 2026-03-02 23:35
 - **端口配置調整**
   - 發現 8052 已被硬體監控服務佔用
