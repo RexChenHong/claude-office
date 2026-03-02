@@ -234,26 +234,64 @@ function createOffice() {
   office = new Container();
   app.stage.addChild(office);
 
+  // 地板
+  const floor = new Graphics();
+  floor.rect(0, 0, CONFIG.width, CONFIG.height);
+  floor.fill({ color: 0x1e272e });
+  office.addChild(floor);
+
+  // 地板格紋
+  for (let x = 0; x < CONFIG.width; x += 60) {
+    const line = new Graphics();
+    line.moveTo(x, 0);
+    line.lineTo(x, CONFIG.height);
+    line.stroke({ color: 0x2d3436, width: 1, alpha: 0.3 });
+    office.addChild(line);
+  }
+  for (let y = 0; y < CONFIG.height; y += 60) {
+    const line = new Graphics();
+    line.moveTo(0, y);
+    line.lineTo(CONFIG.width, y);
+    line.stroke({ color: 0x2d3436, width: 1, alpha: 0.3 });
+    office.addChild(line);
+  }
+
   // ===== 辦公區（右側）=====
   const workArea = new Container();
   workArea.x = 600;
   workArea.y = 50;
   office.addChild(workArea);
 
-  // 辦公區背景
+  // 辦公區背景（漸層效果）
   const workBg = new Graphics();
   workBg.rect(0, 0, 550, 600);
-  workBg.fill({ color: 0x2d3436, alpha: 0.5 });
-  workArea.addChild(workBg);
+  workBg.fill({ color: 0x2d3436, alpha: 0.6 });
+  workBg.rect(0, 0, 550, 5);
+  workBg.fill({ color: 0x0984e3, alpha: 0.8 }); // 頂部藍色線條
+  office.addChild(workBg);
 
   // 辦公區標題
   const workTitle = new Text({
     text: '💼 工作區',
-    style: { fontSize: 20, fill: 0xffffff, fontWeight: 'bold' },
+    style: { fontSize: 22, fill: 0xffffff, fontWeight: 'bold', fontFamily: 'Arial' },
   });
   workTitle.x = 20;
-  workTitle.y = 10;
+  workTitle.y = 15;
   workArea.addChild(workTitle);
+
+  // 辦公區裝飾 - 窗戶
+  const window = new Graphics();
+  window.rect(420, 80, 100, 120);
+  window.fill({ color: 0x74b9ff, alpha: 0.3 });
+  window.stroke({ color: 0xffffff, width: 3 });
+  // 窗戶格線
+  window.moveTo(470, 80);
+  window.lineTo(470, 200);
+  window.stroke({ color: 0xffffff, width: 2 });
+  window.moveTo(420, 140);
+  window.lineTo(520, 140);
+  window.stroke({ color: 0xffffff, width: 2 });
+  workArea.addChild(window);
 
   // 5 個辦公桌位置
   for (let i = 0; i < 5; i++) {
@@ -269,20 +307,36 @@ function createOffice() {
   loungeArea.y = 50;
   office.addChild(loungeArea);
 
-  // 休息區背景
+  // 休息區背景（漸層效果）
   const loungeBg = new Graphics();
   loungeBg.rect(0, 0, 500, 600);
-  loungeBg.fill({ color: 0x6c5ce7, alpha: 0.3 });
-  loungeArea.addChild(loungeBg);
+  loungeBg.fill({ color: 0x6c5ce7, alpha: 0.35 });
+  loungeBg.rect(0, 0, 500, 5);
+  loungeBg.fill({ color: 0xa29bfe, alpha: 0.8 }); // 頂部紫色線條
+  office.addChild(loungeBg);
 
   // 休息區標題
   const loungeTitle = new Text({
     text: '🛋️ 休息區',
-    style: { fontSize: 20, fill: 0xffffff, fontWeight: 'bold' },
+    style: { fontSize: 22, fill: 0xffffff, fontWeight: 'bold', fontFamily: 'Arial' },
   });
   loungeTitle.x = 20;
-  loungeTitle.y = 10;
+  loungeTitle.y = 15;
   loungeArea.addChild(loungeTitle);
+
+  // 休息區裝飾 - 植物
+  const plant = new Graphics();
+  // 花盆
+  plant.roundRect(400, 200, 50, 60, 5);
+  plant.fill({ color: 0xd35400 });
+  // 植物
+  plant.circle(425, 180, 30);
+  plant.fill({ color: 0x27ae60 });
+  plant.circle(415, 170, 20);
+  plant.fill({ color: 0x2ecc71 });
+  plant.circle(435, 175, 18);
+  plant.fill({ color: 0x2ecc71 });
+  loungeArea.addChild(plant);
 
   // 5 個沙發位置
   for (let i = 0; i < 5; i++) {
@@ -291,6 +345,13 @@ function createOffice() {
     sofa.y = 80 + Math.floor(i / 3) * 280;
     loungeArea.addChild(sofa);
   }
+
+  // 全局燈光效果（頂部漸層）
+  const topLight = new Graphics();
+  topLight.rect(0, 0, CONFIG.width, 100);
+  const alpha = 0.15;
+  topLight.fill({ color: 0xffffff, alpha });
+  office.addChild(topLight);
 }
 
 function createDesk(index) {
