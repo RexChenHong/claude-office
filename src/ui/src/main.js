@@ -284,29 +284,60 @@ function createDesk(index) {
   const desk = new Container();
   desk.name = `desk-${index}`;
 
-  // 桌子
+  // 桌子陰影
+  const shadow = new Graphics();
+  shadow.ellipse(70, 150, 60, 15);
+  shadow.fill({ color: 0x000000, alpha: 0.2 });
+  desk.addChild(shadow);
+
+  // 桌子主體
   const table = new Graphics();
-  table.rect(0, 0, 140, 80);
+  table.roundRect(0, 60, 140, 70, 5);
   table.fill({ color: 0x636e72 });
-  table.rect(0, 80, 140, 120);
-  table.fill({ color: 0x2d3436 });
+  table.stroke({ color: 0x2d3436, width: 2 });
   desk.addChild(table);
+
+  // 桌腿
+  const legs = new Graphics();
+  legs.rect(10, 130, 15, 60);
+  legs.rect(115, 130, 15, 60);
+  legs.fill({ color: 0x2d3436 });
+  desk.addChild(legs);
 
   // 螢幕
   const monitor = new Graphics();
-  monitor.rect(30, 20, 80, 50);
-  monitor.fill({ color: 0x0984e3 });
-  monitor.rect(35, 25, 70, 40);
-  monitor.fill({ color: 0x74b9ff });
+  monitor.roundRect(30, 10, 80, 55, 3);
+  monitor.fill({ color: 0x2d3436 });
+  monitor.stroke({ color: 0x636e72, width: 2 });
   desk.addChild(monitor);
+
+  // 螢幕內容（漸層效果）
+  const screen = new Graphics();
+  screen.rect(35, 15, 70, 40);
+  screen.fill({ color: 0x0984e3 });
+  desk.addChild(screen);
+
+  // 螢幕上的文字線（模擬代碼）
+  for (let i = 0; i < 4; i++) {
+    const line = new Graphics();
+    line.rect(40, 20 + i * 9, 50 - i * 5, 4);
+    line.fill({ color: 0x74b9ff, alpha: 0.8 - i * 0.1 });
+    desk.addChild(line);
+  }
+
+  // 螢幕支架
+  const stand = new Graphics();
+  stand.rect(60, 65, 20, 10);
+  stand.fill({ color: 0x2d3436 });
+  desk.addChild(stand);
 
   // 座位標籤
   const label = new Text({
     text: `座位 ${index + 1}`,
     style: { fontSize: 12, fill: 0xb2bec3 },
   });
-  label.x = 40;
-  label.y = 210;
+  label.x = 45;
+  label.y = 200;
   desk.addChild(label);
 
   return desk;
@@ -316,25 +347,43 @@ function createSofa(index) {
   const sofa = new Container();
   sofa.name = `sofa-${index}`;
 
+  // 沙發陰影
+  const shadow = new Graphics();
+  shadow.ellipse(60, 70, 50, 12);
+  shadow.fill({ color: 0x000000, alpha: 0.2 });
+  sofa.addChild(shadow);
+
   // 沙發主體
   const body = new Graphics();
-  body.roundRect(0, 0, 120, 60, 10);
+  body.roundRect(0, 20, 120, 50, 8);
   body.fill({ color: 0xa29bfe });
+  body.stroke({ color: 0x6c5ce7, width: 2 });
   sofa.addChild(body);
 
   // 沙發靠背
   const back = new Graphics();
-  back.roundRect(0, 0, 120, 20, { tl: 10, tr: 10, bl: 0, br: 0 });
+  back.roundRect(0, 0, 120, 25, { tl: 8, tr: 8, bl: 0, br: 0 });
   back.fill({ color: 0x6c5ce7 });
   sofa.addChild(back);
+
+  // 沙發扶手
+  const leftArm = new Graphics();
+  leftArm.roundRect(-5, 10, 15, 55, 5);
+  leftArm.fill({ color: 0x6c5ce7 });
+  sofa.addChild(leftArm);
+
+  const rightArm = new Graphics();
+  rightArm.roundRect(110, 10, 15, 55, 5);
+  rightArm.fill({ color: 0x6c5ce7 });
+  sofa.addChild(rightArm);
 
   // 座位標籤
   const label = new Text({
     text: `座位 ${index + 1}`,
     style: { fontSize: 12, fill: 0xdfe6e9 },
   });
-  label.x = 30;
-  label.y = 70;
+  label.x = 35;
+  label.y = 85;
   sofa.addChild(label);
 
   return sofa;
@@ -359,33 +408,80 @@ function createCharacter(config) {
   char.state = 'idle';
   char.charData = config;
 
-  // 角色身體（臨時用圓形代表）
+  // 角色陰影
+  const shadow = new Graphics();
+  shadow.ellipse(0, 35, 25, 8);
+  shadow.fill({ color: 0x000000, alpha: 0.3 });
+  char.addChild(shadow);
+
+  // 角色身體（圓角矩形，更像人形）
   const body = new Graphics();
-  body.circle(0, 0, 30);
+  body.roundRect(-20, -30, 40, 60, 10);
   body.fill({ color: config.color });
-  body.stroke({ color: 0xffffff, width: 3 });
+  body.stroke({ color: 0xffffff, width: 2 });
   char.addChild(body);
+
+  // 頭部
+  const head = new Graphics();
+  head.circle(0, -45, 18);
+  head.fill({ color: 0xffeaa7 });
+  head.stroke({ color: config.color, width: 2 });
+  char.addChild(head);
+
+  // 頭髮（根據配置顏色）
+  const hair = new Graphics();
+  hair.roundRect(-16, -62, 32, 15, 5);
+  hair.fill({ color: getHairColor(config.hair) });
+  char.addChild(hair);
+
+  // 眼睛
+  const leftEye = new Graphics();
+  leftEye.circle(-5, -47, 3);
+  leftEye.fill({ color: 0x2d3436 });
+  char.addChild(leftEye);
+
+  const rightEye = new Graphics();
+  rightEye.circle(5, -47, 3);
+  rightEye.fill({ color: 0x2d3436 });
+  char.addChild(rightEye);
+
+  // 角色名字（背景）
+  const nameBg = new Graphics();
+  nameBg.roundRect(-25, -82, 50, 20, 5);
+  nameBg.fill({ color: config.color, alpha: 0.8 });
+  char.addChild(nameBg);
 
   // 角色名字
   const name = new Text({
     text: config.name,
-    style: { fontSize: 16, fill: 0xffffff, fontWeight: 'bold' },
+    style: { fontSize: 14, fill: 0xffffff, fontWeight: 'bold' },
   });
   name.anchor.set(0.5, 0.5);
-  name.y = -50;
+  name.y = -72;
   char.addChild(name);
 
   // 狀態標籤
   const label = new Text({
     text: `${config.name} (休息中)`,
-    style: { fontSize: 12, fill: 0xdfe6e9 },
+    style: { fontSize: 12, fill: 0xdfe6e9, fontWeight: '500' },
   });
   label.anchor.set(0.5, 0.5);
-  label.y = 50;
+  label.y = 60;
   char.label = label;
   char.addChild(label);
 
   return char;
+}
+
+function getHairColor(hairType) {
+  const colors = {
+    pink: 0xffb7c5,
+    red: 0xe74c3c,
+    blue: 0x3498db,
+    yellow: 0xf39c12,
+    purple: 0x9b59b6,
+  };
+  return colors[hairType] || 0x333333;
 }
 
 // ============ 角色移動（平滑動畫） ============
