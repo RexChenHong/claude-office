@@ -1,0 +1,54 @@
+{
+  "characters": [
+    {
+      "id": 1,
+      "name": "櫻",
+      "name_en": "Sakura",
+      "hair_color": "pink",
+      "eye_color": "pink",
+      "theme_color": "#ffb7c5",
+      "personality": "溫柔體貼，喜歡喝茶",
+      "prompt_template": "genshin impact style, anime girl, 6-head proportion, pink hair, pink eyes, gentle smile, office attire, white blouse, sitting at desk, high quality, detailed, soft lighting"
+    },
+    {
+      "id": 2,
+      "name": "焰",
+      "name_en": "Homura",
+      "hair_color": "red",
+      "eye_color": "red",
+      "theme_color": "#ff6b6b",
+      "personality": "熱情開朗，充滿活力",
+      "prompt_template": "genshin impact style, anime girl, 6-head proportion, red hair, red eyes, energetic expression, office attire, white blouse, sitting at desk, high quality, detailed, soft lighting"
+    },
+    {
+      "id": 3,
+      "name": "涼",
+      "name_en": "Ryo",
+      "hair_color": "blue",
+      "eye_color": "blue",
+      "theme_color": "#74b9ff",
+      "personality": "冷靜理性，效率至上",
+      "prompt_template": "genshin impact style, anime girl, 6-head proportion, blue hair, blue eyes, calm expression, glasses, office attire, white blouse, sitting at desk, high quality, detailed, soft lighting"
+    },
+    {
+      "id": 4,
+      "name": "琴",
+      "name_en": "Koto",
+      "hair_color": "yellow",
+      "eye_color": "golden",
+      "theme_color": "#ffd93d",
+      "personality": "活潑可愛，喜歡甜食",
+      "prompt_template": "genshin impact style, anime girl, 6-head proportion, yellow hair, golden eyes, cheerful smile, hair ribbon, office attire, white blouse, sitting at desk, high quality, detailed, soft lighting"
+    },
+    {
+      "id": 5,
+      "name": "宵",
+      "name_en": "Yoi",
+      "hair_color": "purple",
+      "eye_color": "purple",
+      "theme_color": "#a29bfe",
+      "personality": "神秘優雅，夜貓子",
+      "prompt_template": "genshin impact style, anime girl, 6-head proportion, purple hair, purple eyes, mysterious smile, office attire, white blouse, sitting at desk, high quality, detailed, soft lighting"
+    }
+  ]
+}
