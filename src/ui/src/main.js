@@ -481,6 +481,8 @@ function createCharacter(config) {
   const char = new Container();
   char.state = 'idle';
   char.charData = config;
+  char.interactive = true; // 啟用互動
+  char.cursor = 'pointer'; // 滑鼠指標
 
   const hairColor = getHairColor(config.hair);
   const skinColor = 0xffe4c4; // 膚色
@@ -490,6 +492,49 @@ function createCharacter(config) {
   shadow.ellipse(0, 40, 30, 10);
   shadow.fill({ color: 0x000000, alpha: 0.25 });
   char.addChild(shadow);
+
+  // ... [中間代碼保持不變] ...
+
+  // 添加互動效果
+  char.on('pointerover', () => {
+    char.scale.set(1.1);
+    char.alpha = 1;
+  });
+
+  char.on('pointerout', () => {
+    char.scale.set(1);
+    if (char.state !== 'idle') {
+      char.alpha = 0.85;
+    }
+  });
+
+  char.on('pointerdown', () => {
+    // 點擊時顯示角色資訊
+    showCharacterInfo(config);
+  });
+
+  return char;
+}
+
+function showCharacterInfo(config) {
+  const info = document.getElementById('character-info');
+  if (!info) return;
+
+  info.innerHTML = `
+    <div style="background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px;">
+      <strong style="color: ${config.color};">${config.name}</strong>
+      <div style="font-size: 11px; color: #dfe6e9; margin-top: 5px;">
+        髮色：${config.hair}<br>
+        狀態：${characterSprites.get(config.id)?.state || '未知'}
+      </div>
+    </div>
+  `;
+
+  // 3 秒後自動隱藏
+  setTimeout(() => {
+    info.innerHTML = '';
+  }, 3000);
+}
 
   // 身體（辦公室服裝 - 白色襯衫）
   const body = new Graphics();
