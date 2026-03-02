@@ -41,9 +41,13 @@
 - 建立工作資料夾結構
 - 完成需求文檔初版
 - 完成技術選型（PixiJS + Node.js WebSocket）
-- 完成 Session 監聽方案設計
-- 完成 5 名角色設計
+- **修正**：監控目標是 Claude CLI，不是 OpenClaw
+- 完成 Claude CLI Session 監聽方案設計
+- 完成 5 名角色設計（正常比例 6 頭身，原神風格）
 - 確認部署位置：`http://100.113.156.108:8051/`
+- 確認美術來源：AI 生成（Stable Diffusion）
+- GitHub repo 初始化並推送：`https://github.com/RexChenHong/claude-office.git`
+- 清理舊版殘留（pip uninstall claude-office）
 
 ---
 *即時更新中*
