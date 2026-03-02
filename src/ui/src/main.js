@@ -421,65 +421,135 @@ function createCharacter(config) {
   char.state = 'idle';
   char.charData = config;
 
+  const hairColor = getHairColor(config.hair);
+  const skinColor = 0xffe4c4; // 膚色
+
   // 角色陰影
   const shadow = new Graphics();
-  shadow.ellipse(0, 35, 25, 8);
-  shadow.fill({ color: 0x000000, alpha: 0.3 });
+  shadow.ellipse(0, 40, 30, 10);
+  shadow.fill({ color: 0x000000, alpha: 0.25 });
   char.addChild(shadow);
 
-  // 角色身體（圓角矩形，更像人形）
+  // 身體（辦公室服裝 - 白色襯衫）
   const body = new Graphics();
-  body.roundRect(-20, -30, 40, 60, 10);
-  body.fill({ color: config.color });
-  body.stroke({ color: 0xffffff, width: 2 });
+  // 上身（襯衫）
+  body.roundRect(-18, -15, 36, 45, 5);
+  body.fill({ color: 0xffffff });
+  body.stroke({ color: 0xdfe6e9, width: 1 });
+  // 領口
+  body.moveTo(-8, -15);
+  body.lineTo(0, -5);
+  body.lineTo(8, -15);
+  body.stroke({ color: config.color, width: 2 });
+  // 裙子/褲子
+  body.roundRect(-20, 30, 40, 25, 3);
+  body.fill({ color: 0x2d3436 });
   char.addChild(body);
 
   // 頭部
   const head = new Graphics();
-  head.circle(0, -45, 18);
-  head.fill({ color: 0xffeaa7 });
-  head.stroke({ color: config.color, width: 2 });
+  head.ellipse(0, -30, 16, 18);
+  head.fill({ color: skinColor });
+  head.stroke({ color: 0xddd, width: 1 });
   char.addChild(head);
 
-  // 頭髮（根據配置顏色）
+  // 頭髮（原神風格 - 豐厚且有層次）
   const hair = new Graphics();
-  hair.roundRect(-16, -62, 32, 15, 5);
-  hair.fill({ color: getHairColor(config.hair) });
+  // 劉海
+  hair.roundRect(-18, -52, 36, 18, { tl: 10, tr: 10, bl: 0, br: 0 });
+  hair.fill({ color: hairColor });
+  // 側邊髮絲
+  hair.roundRect(-20, -40, 8, 30, 4);
+  hair.fill({ color: hairColor });
+  hair.roundRect(12, -40, 8, 30, 4);
+  hair.fill({ color: hairColor });
+  // 髮飾（小蝴蝶結或髮夾）
+  hair.circle(-15, -45, 4);
+  hair.fill({ color: config.color });
   char.addChild(hair);
 
-  // 眼睛
-  const leftEye = new Graphics();
-  leftEye.circle(-5, -47, 3);
-  leftEye.fill({ color: 0x2d3436 });
-  char.addChild(leftEye);
+  // 眼睛（大眼睛 - 動漫風格）
+  const leftEyeWhite = new Graphics();
+  leftEyeWhite.ellipse(-6, -32, 5, 6);
+  leftEyeWhite.fill({ color: 0xffffff });
+  char.addChild(leftEyeWhite);
 
-  const rightEye = new Graphics();
-  rightEye.circle(5, -47, 3);
-  rightEye.fill({ color: 0x2d3436 });
-  char.addChild(rightEye);
+  const leftEyeIris = new Graphics();
+  leftEyeIris.ellipse(-6, -31, 3.5, 4);
+  leftEyeIris.fill({ color: getEyeColor(config.hair) });
+  char.addChild(leftEyeIris);
+
+  const leftEyePupil = new Graphics();
+  leftEyePupil.circle(-6, -30, 1.5);
+  leftEyePupil.fill({ color: 0x000000 });
+  char.addChild(leftEyePupil);
+
+  const rightEyeWhite = new Graphics();
+  rightEyeWhite.ellipse(6, -32, 5, 6);
+  rightEyeWhite.fill({ color: 0xffffff });
+  char.addChild(rightEyeWhite);
+
+  const rightEyeIris = new Graphics();
+  rightEyeIris.ellipse(6, -31, 3.5, 4);
+  rightEyeIris.fill({ color: getEyeColor(config.hair) });
+  char.addChild(rightEyeIris);
+
+  const rightEyePupil = new Graphics();
+  rightEyePupil.circle(6, -30, 1.5);
+  rightEyePupil.fill({ color: 0x000000 });
+  char.addChild(rightEyePupil);
+
+  // 眼睛高光
+  const leftHighlight = new Graphics();
+  leftHighlight.circle(-7, -33, 1);
+  leftHighlight.fill({ color: 0xffffff });
+  char.addChild(leftHighlight);
+
+  const rightHighlight = new Graphics();
+  rightHighlight.circle(5, -33, 1);
+  rightHighlight.fill({ color: 0xffffff });
+  char.addChild(rightHighlight);
+
+  // 嘴巴（微笑）
+  const mouth = new Graphics();
+  mouth.arc(0, -24, 3, 0.2, Math.PI - 0.2);
+  mouth.stroke({ color: 0xd63031, width: 1.5 });
+  char.addChild(mouth);
+
+  // 腮紅
+  const leftBlush = new Graphics();
+  leftBlush.ellipse(-10, -26, 4, 2);
+  leftBlush.fill({ color: 0xffb7c5, alpha: 0.4 });
+  char.addChild(leftBlush);
+
+  const rightBlush = new Graphics();
+  rightBlush.ellipse(10, -26, 4, 2);
+  rightBlush.fill({ color: 0xffb7c5, alpha: 0.4 });
+  char.addChild(rightBlush);
 
   // 角色名字（背景）
   const nameBg = new Graphics();
-  nameBg.roundRect(-25, -82, 50, 20, 5);
-  nameBg.fill({ color: config.color, alpha: 0.8 });
+  nameBg.roundRect(-28, -75, 56, 22, 8);
+  nameBg.fill({ color: config.color, alpha: 0.9 });
+  nameBg.stroke({ color: 0xffffff, width: 1.5 });
   char.addChild(nameBg);
 
   // 角色名字
   const name = new Text({
     text: config.name,
-    style: { fontSize: 14, fill: 0xffffff, fontWeight: 'bold' },
+    style: { fontSize: 13, fill: 0xffffff, fontWeight: 'bold', fontFamily: 'Arial' },
   });
   name.anchor.set(0.5, 0.5);
-  name.y = -72;
+  name.y = -64;
   char.addChild(name);
 
   // 狀態標籤
   const label = new Text({
     text: `${config.name} (休息中)`,
-    style: { fontSize: 12, fill: 0xdfe6e9, fontWeight: '500' },
+    style: { fontSize: 11, fill: 0xdfe6e9, fontWeight: '500', fontFamily: 'Arial' },
   });
   label.anchor.set(0.5, 0.5);
-  label.y = 60;
+  label.y = 65;
   char.label = label;
   char.addChild(label);
 
@@ -495,6 +565,17 @@ function getHairColor(hairType) {
     purple: 0x9b59b6,
   };
   return colors[hairType] || 0x333333;
+}
+
+function getEyeColor(hairType) {
+  const colors = {
+    pink: 0xff69b4,   // 粉色眼睛
+    red: 0xe74c3c,    // 紅色眼睛
+    blue: 0x3498db,   // 藍色眼睛
+    yellow: 0xf39c12, // 金色眼睛
+    purple: 0x9b59b6, // 紫色眼睛
+  };
+  return colors[hairType] || 0x2d3436;
 }
 
 // ============ 角色移動（平滑動畫） ============
