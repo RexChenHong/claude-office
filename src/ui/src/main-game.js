@@ -48,7 +48,11 @@ async function init() {
     antialias: true,
   });
   
-  document.getElementById('game-container').appendChild(app.view.canvas);
+  // PixiJS 7+ 使用 app.canvas
+  const canvas = app.canvas;
+  document.getElementById('game-container').appendChild(canvas);
+  
+  console.log('[Game] Canvas 創建完成');
   
   // 創建場景
   createScene();
@@ -138,7 +142,7 @@ function createClouds(scene) {
   cloud1.y = 100;
   scene.addChild(cloud1);
   
-  // 雲朵動畫（在 update 中更新位置）
+  // 保存到 scene 上
   scene.cloud1 = cloud1;
   scene.cloud1Speed = 0.5;
   
@@ -154,6 +158,9 @@ function createClouds(scene) {
   
   scene.cloud2 = cloud2;
   scene.cloud2Speed = 0.3;
+  
+  // 保存 scene 引用
+  scene.clouds = { cloud1, cloud2 };
 }
 
 function createCharacters() {
@@ -187,17 +194,21 @@ function update(deltaTime) {
   });
   
   // 更新雲朵動畫
-  if (app.stage.cloud1) {
-    app.stage.cloud1.x += app.stage.cloud1Speed * deltaTime;
-    if (app.stage.cloud1.x > CONFIG.width + 100) {
-      app.stage.cloud1.x = -100;
+  if (app.stage.clouds) {
+    const { cloud1, cloud2 } = app.stage.clouds;
+    
+    if (cloud1) {
+      cloud1.x += app.stage.cloud1Speed * deltaTime;
+      if (cloud1.x > CONFIG.width + 100) {
+        cloud1.x = -100;
+      }
     }
-  }
-  
-  if (app.stage.cloud2) {
-    app.stage.cloud2.x += app.stage.cloud2Speed * deltaTime;
-    if (app.stage.cloud2.x > CONFIG.width + 100) {
-      app.stage.cloud2.x = -100;
+    
+    if (cloud2) {
+      cloud2.x += app.stage.cloud2Speed * deltaTime;
+      if (cloud2.x > CONFIG.width + 100) {
+        cloud2.x = -100;
+      }
     }
   }
 }
