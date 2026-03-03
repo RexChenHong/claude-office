@@ -112,8 +112,15 @@
 **Commit**: 1f4d96a, 4b0032f, 1a7a6fc, c14c387
 **狀態**: Phase 1.5 完成，Phase 2 美術資產準備就緒
 
-### 2026-03-03 01:03 問題記錄
-- 服務頻繁重啟（nohup 不穩定）
-- 需要改用 PM2 或 systemd
-- GPU 持續 96% 佔用
+### 2026-03-03 09:30 自主推進
+- ✅ main.js 語法錯誤修復（createCharacter 函數被切斷）
+- ✅ 服務守護化改用 PM2
+  - `claude-office-monitor` :8053
+  - `claude-office-ui` :8055
+- ✅ CHARACTERS.md 比例確認為 6 頭身
+- ⏸️ Phase 2 美術生成等待 GPU 釋放（trading 訓練中，91%）
+
+### 已知問題
+- UI 原指定 8051 port，但 8051-8054 被其他服務佔用，目前使用 8055
+- 瀏覽器控制服務暫時無法連接（需重啟 gateway）
 
