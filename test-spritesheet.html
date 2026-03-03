@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sprite Sheet Test</title>
+</head>
+<body>
+    <h1>Sprite Sheet 載入測試</h1>
+    <div id="result"></div>
+    <script type="module">
+        import { Assets, Spritesheet, AnimatedSprite, Application, Container, Text } from 'pixi.js';
+
+        // 創建 PixiJS 應用
+        const app = new Application();
+        await app.init({
+            width: 800,
+            height: 600,
+            backgroundColor: 0x1099bb
+        });
+        document.body.appendChild(app.view.canvas);
+
+        const container = new Container();
+        app.stage.addChild(container);
+
+        const resultDiv = document.getElementById('result');
+
+        try {
+            resultDiv.innerHTML += '<p>開始載入 sprite sheet...</p>';
+
+            // 載入 idle 動畫
+            const jsonPath = '/assets/sprites/sakura/idle.json';
+            const pngPath = '/assets/sprites/sakura/idle.png';
+
+            resultDiv.innerHTML += `<p>載入 PNG: ${pngPath}</p>`;
+            const texture = await Assets.load(pngPath);
+            resultDiv.innerHTML += '<p style="color:green">✅ PNG 載入成功</p>';
+
+            resultDiv.innerHTML += `<p>載入 JSON: ${jsonPath}</p>`;
+            const response = await fetch(jsonPath);
+            const jsonData = await response.json();
+            resultDiv.innerHTML += '<p style="color:green">✅ JSON 載入成功</p>';
+            resultDiv.innerHTML += `<p>JSON frames: ${Object.keys(jsonData.frames).length}</p>`;
+            resultDiv.innerHTML += `<p>JSON image: ${jsonData.meta.image}</p>`;
+
+            // 創建 Spritesheet
+            const spritesheet = new Spritesheet(texture, jsonData);
+            resultDiv.innerHTML += '<p style="color:blue">正在解析 Spritesheet...</p>';
+            await spritesheet.parse();
+            resultDiv.innerHTML += '<p style="color:green">✅ Spritesheet 解析成功</p>';
+            resultDiv.innerHTML += `<p>Textures 數量: ${Object.keys(spritesheet.textures).length}</p>`;
+
+            // 創建 AnimatedSprite
+            const textures = Object.values(spritesheet.textures);
+            textures.sort((a, b) => {
+                const frameA = parseInt(a.textureCache?.textureCacheIds?.frameId || 0);
+                const frameB = parseInt(b.textureCache?.textureCacheIds?.frameId || 0);
+                return frameA - frameB;
+            });
+
+            resultDiv.innerHTML += `<p>排序後 textures: ${textures.length}</p>`;
+
+            const animatedSprite = new AnimatedSprite(textures);
+            animatedSprite.animationSpeed = 0.15;
+            animatedSprite.anchor.set(0.5, 1);
+            animatedSprite.loop = true;
+            animatedSprite.play();
+
+            animatedSprite.x = 400;
+            animatedSprite.y = 500;
+
+            container.addChild(animatedSprite);
+
+            resultDiv.innerHTML += '<p style="color:green">✅ AnimatedSprite 創建成功並開始播放！</p>';
+
+            // 添加狀態文字
+            const statusText = new Text({
+                text: `正在播放 idle 動畫 (${textures.length} 幀)`,
+                style: { fontSize: 16, fill: 0xffffff }
+            });
+            statusText.anchor.set(0.5, 0);
+            statusText.x = 400;
+            statusText.y = 50;
+            container.addChild(statusText);
+
+        } catch (err) {
+            resultDiv.innerHTML += `<p style="color:red">❌ 錯誤: ${err.message}</p><pre>${err.stack}</pre>`;
+            console.error(err);
+        }
+    </script>
+</body>
+</html>

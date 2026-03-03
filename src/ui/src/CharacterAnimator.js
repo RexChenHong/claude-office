@@ -60,21 +60,21 @@ export class CharacterAnimator {
     }
 
     const spritesheet = charSprites[action];
-    const textures = Object.values(spritesheet.textures);
+    const textureIds = Object.keys(spritesheet.textures);
+    const textures = textureIds.map(id => spritesheet.textures[id]);
 
     if (textures.length === 0) {
       console.warn(`[Animator] ${characterId} - ${action} 沒有幀`);
       return null;
     }
 
-    // 對 textures 排序以確保動畫順序正確
-    textures.sort((a, b) => {
-      const frameA = parseInt(a.textureCache.textureCacheIds?.frameId || 0);
-      const frameB = parseInt(b.textureCache.textureCacheIds?.frameId || 0);
-      return frameA - frameB;
-    });
+    // 按 ID 排序（ sakura_idle_000, sakura_idle_001, ...）
+    textureIds.sort();
+    const sortedTextures = textureIds.map(id => spritesheet.textures[id]);
 
-    console.log(`[Animator] ${characterId} - ${action} 共 ${textures.length} 幀`);
+    console.log(`[Animator] ${characterId} - ${action} 共 ${sortedTextures.length} 幀`);
+
+    const animatedSprite = new AnimatedSprite(sortedTextures);
 
     const animatedSprite = new AnimatedSprite(textures);
     animatedSprite.animationSpeed = this.animationSpeed;
