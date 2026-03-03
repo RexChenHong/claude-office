@@ -141,8 +141,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 0.2;  // 大幅降低曝光度（0.5 → 0.2）
+      renderer.toneMapping = THREE.LinearToneMapping;
+      renderer.toneMappingExposure = 1.2;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -163,23 +163,8 @@
 
     function loadHDRI() {
       loadingText.textContent = '載入環境光...';
-      console.log('[V6] 載入 HDRI 環境光...');
-
-      const rgbeLoader = new RGBELoader();
-
-      rgbeLoader.load(
-        'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_03_1k.hdr',
-        (texture) => {
-          texture.mapping = THREE.EquirectangularReflectionMapping;
-          scene.environment = texture;
-          // 不設置背景，避免過度曝光
-          console.log('[V6] HDRI 環境光載入成功！');
-        },
-        undefined,
-        (error) => {
-          console.error('[V6] HDRI 載入失敗:', error);
-        }
-      );
+      console.log('[V6] 跳過 HDRI，使用簡單環境光');
+      // 不使用 HDRI，避免過度曝光
     }
 
     function loadOfficeModel() {
@@ -198,6 +183,11 @@
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
+              // 大幅提高 roughness 降低反光
+              if (child.material) {
+                child.material.roughness = 0.9;  // 幾乎不反光
+                child.material.metalness = 0.1;  // 降低金屬感
+              }
             }
           });
 
@@ -253,7 +243,7 @@
     }
 
     function setupLighting() {
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
 
       const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.4);
@@ -280,18 +270,8 @@
     }
 
     function setupPostProcessing() {
-      composer = new EffectComposer(renderer);
-
-      const renderPass = new RenderPass(scene, camera);
-      composer.addPass(renderPass);
-
-      const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.3,
-        0.4,
-        0.85
-      );
-      composer.addPass(bloomPass);
+      // 暫時移除後處理，避免過度曝光
+      composer = null;
     }
 
     function onWindowResize() {
