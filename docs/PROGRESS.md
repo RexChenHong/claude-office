@@ -19,10 +19,10 @@
 - [x] 角色系統基礎（臨時色塊）
 - [ ] 測試與驗證
 
-### Phase 2: 視覺資產
-- [ ] 場景美術設計（原神風辦公室）
-- [ ] 角色立繪（5名，Stable Diffusion 生成）
-- [ ] 動畫 sprite sheet 製作
+### Phase 2: 視覺資產 ✅ 完成
+- [x] 場景美術設計（原神風辦公室背景 2 張）
+- [x] 角色立繪（5名 × 3 狀態 = 15 張，Stable Diffusion 生成）
+- [x] 素材整合到 PixiJS 前端
 
 ### Phase 3: 優化與發布
 - [ ] 效能優化（<10% 硬體）
@@ -123,4 +123,27 @@
 ### 已知問題
 - UI 原指定 8051 port，但 8051-8054 被其他服務佔用，目前使用 8055
 - 瀏覽器控制服務暫時無法連接（需重啟 gateway）
+
+### 2026-03-03 10:50-11:00 自主推進（Phase 2 美術生成完成）
+- ✅ Stable Diffusion 生成全部完成
+  - 背景 2 張：work_area.png, lounge_area.png
+  - 角色 15 張：櫻/焰/涼/琴/宵 × idle/working/waiting
+- ✅ Vite 靜態資源配置（public/assets → ../../../assets 軟連結）
+- ✅ main.js 改用圖片精靈渲染角色
+  - 預載入美術素材（Assets.load）
+  - 狀態切換時自動更換立繪
+  - 保留 fallback 繪圖模式
+- ✅ 服務重啟驗證（圖片可正確訪問）
+
+**素材位置**:
+- 背景: `/mnt/e_drive/claude-office/assets/backgrounds/`
+- 角色: `/mnt/e_drive/claude-office/assets/characters/`
+
+**訪問測試**:
+- ✅ http://localhost:8055/assets/backgrounds/work_area.png (200, image/png)
+- ✅ http://localhost:8055/assets/characters/sakura/idle.png (200, image/png)
+
+**下一步**: 
+- 溫水起床後用瀏覽器檢查畫面品質
+- 如需要可調整角色縮放比例或位置
 
