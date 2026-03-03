@@ -4,7 +4,7 @@
  * 使用 PixiJS + Sprite Sheet 實現遊戲級角色動畫
  */
 
-import { Application, Container, Graphics, Text, Assets, AnimatedSprite, Spritesheet } from 'pixi.js';
+import { Application, Container, Graphics, Text, Assets, AnimatedSprite, Spritesheet, Sprite } from 'pixi.js';
 import { CharacterAnimator, CharacterStateMachine } from './CharacterAnimator.js';
 
 // ============ 配置 ============
@@ -251,14 +251,14 @@ function createOffice() {
   app.stage.addChild(office);
 
   // 背景
-  const bgWork = new PIXI.Sprite(Assets.get('bgWork'));
+  const bgWork = new Sprite(Assets.get('bgWork'));
   bgWork.x = CONFIG.workArea.x;
   bgWork.y = CONFIG.workArea.y;
   bgWork.width = CONFIG.workArea.width;
   bgWork.height = CONFIG.workArea.height;
   office.addChild(bgWork);
 
-  const bgLounge = new PIXI.Sprite(Assets.get('bgLounge'));
+  const bgLounge = new Sprite(Assets.get('bgLounge'));
   bgLounge.x = CONFIG.loungeArea.x;
   bgLounge.y = CONFIG.loungeArea.y;
   bgLounge.width = CONFIG.loungeArea.width;

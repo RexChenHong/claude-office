@@ -164,7 +164,7 @@
   "meta": {
     "app": "Claude Office Sprite Generator",
     "version": "1.0",
-    "image": "ryo_idle.png",
+    "image": "idle.png",
     "format": "RGBA8888",
     "size": {
       "w": 2048,
