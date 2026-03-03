@@ -1,203 +1,267 @@
-# Blender 學習筆記 - Day 1
+# Blender 學習路徑
 
-## 📚 今日學習內容（2026-03-03）
-
-### ✅ 完成項目
-
-1. **Blender 安裝**（5 分鐘）
-   - 版本：Blender 3.0.1
-   - 位置：`/usr/bin/blender`
-   - 大小：837 MB（包含依賴庫）
-
-2. **Python API 基礎**（30 分鐘）
-   - 學習 `bpy` 模組
-   - 基礎操作：創建、縮放、定位
-   - 物件命名與管理
-
-3. **創建第一個場景**（1 小時）
-   - 辦公桌（桌面 + 桌腿）
-   - 辦公椅（座椅 + 椅背）
-   - 地板、燈光、相機
-   - 保存 .blend 檔案
+## 📅 建立日期：2026-03-03
 
 ---
 
-## 🎯 學習成果
+## 🎯 學習目標
 
-### 創建的檔案
-1. **OFFICE_SPEC.md**：詳細的辦公室規格書
-2. **create_office.py**：Blender Python 腳本
-3. **office_scene.blend**：Blender 場景檔案
+掌握 Blender 建模技能，創建 Sketchfab 等級的 5 人辦公室場景。
 
-### 代碼示例
-
-#### 創建立方體
-```python
-import bpy
-
-# 創建立方體
-bpy.ops.mesh.primitive_cube_add()
-obj = bpy.context.active_object
-
-# 設置名稱、縮放、位置
-obj.name = "My_Cube"
-obj.scale = (1, 1, 1)
-obj.location = (0, 0, 0)
-```
-
-#### 創建平面
-```python
-bpy.ops.mesh.primitive_plane_add()
-floor = bpy.context.active_object
-floor.scale = (10, 10, 1)
-```
-
-#### 創建燈光
-```python
-# 太陽光
-bpy.ops.object.light_add(type='SUN')
-sun = bpy.context.active_object
-sun.location = (5, 5, 10)
-sun.data.energy = 5
-
-# 區域光
-bpy.ops.object.light_add(type='AREA')
-area = bpy.context.active_object
-area.data.energy = 100
-```
+**預期效果**：85% → 98%
 
 ---
 
-## 🚧 遇到的問題
+## 📚 學習階段
 
-### 問題 1：GLTF 導出失敗
-**錯誤訊息**：
-```
-'/usr/bin/3.0/python/lib/python3.10/site-packages/libextern_draco.so' does not exist
-```
+### Phase 1：Blender 基礎（1-2 小時）
 
-**原因**：
-- Blender 3.0 的 GLTF 導出需要 draco 壓縮庫
-- Ubuntu 版本的 Blender 缺少此庫
+#### 1.1 介面與操作
+- [ ] Blender 介面佈局
+- [ ] 視窗導航（旋轉、縮放、平移）
+- [ ] 基礎快捷鍵
+  - `G`：移動
+  - `R`：旋轉
+  - `S`：縮放
+  - `Tab`：切換編輯模式
+  - `Z`：著色模式
+  - `Ctrl+S`：保存
 
-**解決方案**：
-1. 短期：保存 .blend 檔案，手動在 GUI 導出
-2. 長期：安裝 draco 庫或升級 Blender
+#### 1.2 基礎建模
+- [ ] 基礎形狀（Cube、Cylinder、Plane）
+- [ ] 編輯模式（Vertex、Edge、Face）
+- [ ] Extrude（擠出）
+- [ ] Inset（內插）
+- [ ] Bevel（倒角）
+- [ ] Loop Cut（環切）
 
-### 問題 2：API 參數錯誤
-**錯誤代碼**：
-```python
-bpy.ops.mesh.primitive_plane_add(scale=(10, 10))  # ❌ 錯誤
-```
+#### 1.3 材質與貼圖
+- [ ] 材質系統（Principled BSDF）
+- [ ] 貼圖映射（UV Mapping）
+- [ ] PBR 材質設置
+  - Base Color（基礎色）
+  - Roughness（粗糙度）
+  - Metallic（金屬度）
+  - Normal Map（法線貼圖）
 
-**正確代碼**：
-```python
-bpy.ops.mesh.primitive_cube_add()  # ✅ 正確
-obj = bpy.context.active_object
-obj.scale = (10, 10, 1)
-```
-
-**原因**：Blender 3.0 的 `primitive_*_add()` 不接受 `scale` 參數
-
----
-
-## 💡 學習心得
-
-### 1. Blender Python API 的特點
-- **優點**：
-  - 程序化建模（適合重複性工作）
-  - 可批量創建物件
-  - 可精確控制參數
-- **缺點**：
-  - 需要 GUI 操作的功能無法自動化（如部分導出）
-  - 文檔不夠詳細
-  - 版本差異大（2.8 vs 3.0）
-
-### 2. 建模思維
-- **模組化設計**：將場景拆分為獨立組件
-- **參數化建模**：使用變數控制尺寸
-- **層級結構**：合理的命名規範
-
-### 3. 工作流程
-```
-1. 規格設計（OFFICE_SPEC.md）
-2. Python 腳本（create_office.py）
-3. 生成 .blend 檔案
-4. 手動導出 GLTF
-5. Three.js 整合
-```
+#### 1.4 燈光設置
+- [ ] 點光源（Point Light）
+- [ ] 方向光（Sun Light）
+- [ ] 區域光（Area Light）
+- [ ] 環境光（World Settings）
 
 ---
 
-## 📋 明日計劃（2026-03-04）
+### Phase 2：辦公室建模（1-2 小時）
 
-### Phase 1.5 繼續（預計 2-3 小時）
+#### 2.1 建築結構
+- [ ] 地板（Plane → Extrude）
+- [ ] 牆面（Plane → Extrude）
+- [ ] 天花板
+- [ ] 窗戶（落地窗設計）
+- [ ] 玻璃隔間（Transparent Material）
 
-1. **學習 Blender GUI 操作**（1 小時）
-   - 開啟 office_scene.blend
-   - 學習導航（旋轉、縮放、平移）
-   - 學習選取、移動、縮放工具
-   - 學習材質設置
+#### 2.2 辦公家具
+按照 `LAYOUT_V4.md` 佈局：
 
-2. **手動導出 GLTF**（30 分鐘）
-   - File → Export → glTF 2.0
-   - 選擇導出選項
-   - 測試導出結果
+**工作站（5 個）**
+- [ ] 辦公桌（1.2m x 0.6m）
+  - 桌面（Box + Bevel）
+  - 桌腿（Cylinder）
+- [ ] 辦公椅
+  - 座椅（Box + Subdivision）
+  - 椅背（Box）
+  - 扶手（Cylinder）
+- [ ] 電腦螢幕（雙螢幕）
+  - 外框（Box）
+  - 螢幕（Plane + Emission）
 
-3. **Three.js 整合**（1 小時）
-   - 更新 main-threejs.js
-   - 加載新模型
-   - 調整相機和燈光
-   - 測試渲染效果
+**會議室（左上角）**
+- [ ] 會議桌（橢圓形，3m x 1.2m）
+- [ ] 會議椅（6 張）
+- [ ] 白板（2m x 1.2m）
+
+**公共區域（右下角）**
+- [ ] L 型沙發
+- [ ] 茶几
+- [ ] 咖啡桌
+- [ ] 高腳椅（2 張）
+
+#### 2.3 裝飾品
+- [ ] 植物（大型 + 小型）
+- [ ] 掛畫（牆面裝飾）
+- [ ] 時鐘
+- [ ] 天花板燈具（LED 平板燈）
+- [ ] 檔案櫃（靠牆）
+
+#### 2.4 材質應用
+- [ ] 木地板（真實木紋貼圖）
+- [ ] 白色牆面（粗糙度設置）
+- [ ] 布料材質（沙發、椅子）
+- [ ] 金屬材質（框架、桌腿）
+- [ ] 玻璃材質（窗戶、隔間）
 
 ---
 
-## 🎯 里程碑
+### Phase 3：導出與整合（30 分鐘）
 
-### Week 1 Day 1（今天）✅
-- [x] Blender 安裝
-- [x] Python API 基礎
-- [x] 創建第一個場景
-- [x] 保存 .blend 檔案
+#### 3.1 導出 GLTF
+- [ ] 檢查模型尺寸（公制）
+- [ ] 應用所有變換（Ctrl+A）
+- [ ] 導出 GLTF 格式
+  - Format: glTF Separate (.gltf + .bin + textures)
+  - Include: Custom Properties, Cameras, Lights
+  - Transform: +Y Up
+  - Mesh: Apply Modifiers
 
-### Week 1 Day 2（明天）
-- [ ] Blender GUI 基礎
-- [ ] 手動導出 GLTF
-- [ ] Three.js 整合測試
+#### 3.2 Three.js 整合
+- [ ] 安裝 GLTFLoader
+  ```bash
+  npm install three/examples/jsm/loaders/GLTFLoader
+  ```
+- [ ] 加載 GLTF 模型
+  ```javascript
+  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+  
+  const loader = new GLTFLoader();
+  loader.load('/models/office.glb', (gltf) => {
+    scene.add(gltf.scene);
+  });
+  ```
+- [ ] 調整相機位置
+- [ ] 測試渲染效果
 
-### Week 1 Day 3（後天）
-- [ ] 添加更多細節（電腦、書本、植物）
-- [ ] 材質和紋理
-- [ ] 優化模型
+#### 3.3 優化
+- [ ] 降低多邊形數量（Decimate Modifier）
+- [ ] 壓縮貼圖（1024x1024）
+- [ ] 合併網格（Join）
+- [ ] 檢查效能（Frame Rate）
 
 ---
 
-## 📚 學習資源
+## 🎨 技術規格
+
+### 建模標準
+- **單位**：公制（米）
+- **比例**：1:1 真實比例
+- **原點**：地板中心 (0, 0, 0)
+- **朝向**：+Y 向上，+Z 向前
+
+### 貼圖規格
+- **解析度**：1024x1024 或 2048x2048
+- **格式**：PNG 或 JPEG
+- **類型**：
+  - Base Color（Albedo）
+  - Roughness
+  - Metallic
+  - Normal Map
+  - Ambient Occlusion（可選）
+
+### 材質標準
+- **木地板**：
+  - Base Color: 木紋貼圖
+  - Roughness: 0.4-0.6
+  - Metallic: 0.0
+- **布料**：
+  - Base Color: 單色或花紋
+  - Roughness: 0.7-0.9
+  - Metallic: 0.0
+- **金屬**：
+  - Base Color: 金屬色
+  - Roughness: 0.2-0.4
+  - Metallic: 0.9-1.0
+- **玻璃**：
+  - Base Color: 白色或淡藍色
+  - Roughness: 0.0
+  - Metallic: 0.0
+  - Alpha: 0.3-0.5
+
+---
+
+## 📖 學習資源
 
 ### 官方文檔
-- Blender Python API：https://docs.blender.org/api/3.0/
-- Blender 手冊：https://docs.blender.org/manual/en/3.0/
+- **Blender 官方文檔**：https://docs.blender.org/
+- **Blender 手冊**：https://docs.blender.org/manual/en/latest/
 
-### 教程
-- Blender Guru（甜甜圈教程）：https://www.blenderguru.com/
-- CG Cookie：https://cgcookie.com/
+### 教學影片
+- **Blender Guru**：https://www.blenderguru.com/
+  - Blender 2.8 Beginner Tutorial Series
+  - Donut Tutorial（甜甜圈教學）
+- **CG Cookie**：https://cgcookie.com/
+- **Blender Cloud**：https://cloud.blender.org/
+
+### 免費資源
+- **Poly Haven**（貼圖）：https://polyhaven.com/
+  - HDRI 環境貼圖
+  - PBR 材質
+  - 3D 模型
+- **Texture Haven**（貼圖）：https://texturehaven.com/
+- **Sketchfab**（參考）：https://sketchfab.com/features/gltf
+
+### Python API
+- **Blender Python API**：https://docs.blender.org/api/current/
+- **Blender Python 範例**：https://docs.blender.org/api/current/info_quickstart.html
 
 ---
 
-## 🔄 下一步行動
+## 🛠️ 實作計劃
 
-### 立即行動（現在）
-1. 提交 Git 變更 ✅
-2. 向溫水報告進度
-3. 休息，準備明天的學習
+### Day 1（2026-03-03）
+- [ ] 完成 Phase 1（基礎）
+- [ ] 熟悉介面與操作
+- [ ] 建立第一個簡單模型（Cube → 桌子）
 
-### 明天行動（2026-03-04）
-1. 早上：學習 Blender GUI（1 小時）
-2. 下午：導出 GLTF + Three.js 整合（2 小時）
-3. 晚上：測試和優化（1 小時）
+### Day 2（2026-03-04）
+- [ ] 完成 Phase 2（建模）
+- [ ] 建立完整辦公室場景
+- [ ] 應用材質與貼圖
+
+### Day 3（2026-03-05）
+- [ ] 完成 Phase 3（導出）
+- [ ] 整合到 Three.js
+- [ ] 測試與優化
 
 ---
 
-**學習時間**：今天 1.5 小時
-**累計時間**：1.5 小時 / 40 小時（3.75%）
-**學習進度**：Phase 1.5 進行中（30% 完成）
+## 📊 進度追蹤
+
+| 階段 | 預計時間 | 實際時間 | 狀態 |
+|------|---------|---------|------|
+| Phase 1：基礎 | 1-2 小時 | - | ⏳ 待開始 |
+| Phase 2：建模 | 1-2 小時 | - | ⏳ 待開始 |
+| Phase 3：導出 | 30 分鐘 | - | ⏳ 待開始 |
+
+---
+
+## 🎯 成功標準
+
+### 技術標準
+- ✅ 模型能成功導出 GLTF
+- ✅ Three.js 能正確加載
+- ✅ 貼圖正確顯示
+- ✅ 材質效果符合預期
+
+### 視覺標準
+- ✅ 達到 Sketchfab 參考模型的 95% 以上
+- ✅ 材質真實感明顯提升
+- ✅ 光照效果自然
+- ✅ 陰影柔和
+
+### 效能標準
+- ✅ Frame Rate ≥ 30 FPS（筆電）
+- ✅ 載入時間 < 5 秒
+- ✅ 記憶體使用 < 500MB
+
+---
+
+## 📝 學習筆記
+
+### 2026-03-03
+- 決策：選擇 Blender 建模作為長期技術投資
+- 原因：效果最好（98%），免費，可複用
+- 下一步：開始 Phase 1 學習
+
+---
+
+**最後更新**：2026-03-03 18:25 (Asia/Taipei)
