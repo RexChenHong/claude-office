@@ -410,9 +410,9 @@ class GameScene {
 
     // 創建角色
     const positions = [
-      { x: 200, y: 600 },
-      { x: 350, y: 600 },
-      { x: 750, y: 600 }
+      { x: 200, y: 500 },
+      { x: 400, y: 500 },
+      { x: 800, y: 500 }
     ];
 
     Object.keys(configs).forEach((id, index) => {
