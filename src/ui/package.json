@@ -4,7 +4,7 @@
   "description": "Claude Office visualization frontend with PixiJS",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 8051",
+    "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview"
   },
