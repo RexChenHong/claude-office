@@ -75,8 +75,6 @@ export class CharacterAnimator {
     console.log(`[Animator] ${characterId} - ${action} 共 ${sortedTextures.length} 幀`);
 
     const animatedSprite = new AnimatedSprite(sortedTextures);
-
-    const animatedSprite = new AnimatedSprite(textures);
     animatedSprite.animationSpeed = this.animationSpeed;
     animatedSprite.anchor.set(0.5, 1); // 底部中心
     animatedSprite.loop = true;
