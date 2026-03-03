@@ -61,6 +61,19 @@
 
 ---
 
+### Blender 建模（方案 B - 進行中）
+
+#### Phase 1：基礎學習（2026-03-03 18:28）
+- ✅ Blender 3.0.1 安裝確認
+- ✅ 創建第一個桌子模型（desk.blend）
+- ✅ 學習 Python API 基礎
+- ✅ 學習 PBR 材質設置
+- ⏳ 學習 GLTF 導出（遇到插件問題）
+
+**學習筆記**：`/mnt/e_drive/claude-office/docs/BLENDER_LEARNING_NOTES.md`
+
+---
+
 ## 📊 視覺品質對比
 
 | 項目 | Sketchfab | V5.2 | 差距 |
