@@ -115,8 +115,14 @@
 
 ### Week 1（本週）
 - [x] 學習計劃制定
-- [ ] Phase 1 完成：第一個 3D 場景
-- [ ] Phase 2 完成：動畫系統
+- [x] Phase 1 完成：第一個 3D 場景
+  - [x] 下載 Xbot.glb 模型（2.8 MB）
+  - [x] 創建 Three.js 場景
+  - [x] 實現 GLTF 模型加載
+  - [x] 添加燈光和陰影
+  - [x] 添加 OrbitControls
+  - [x] 安裝 Three.js 套件（0.160.0）
+- [ ] Phase 2 進行中：動畫系統
 
 ### Week 2（下週）
 - [ ] Phase 3 完成：Blender 基礎
