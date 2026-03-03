@@ -9,7 +9,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
-import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 
 // 導入貼圖生成器
 import {
@@ -634,9 +633,9 @@ function createConferenceRoom(centerX, centerZ) {
 function createGlassPartition(parent) {
   const { height } = OFFICE_SPEC.wall;
 
-  // 玻璃牆（左）
+  // 玻璃牆（左）- 使用 MeshPhysicalMaterial
   const leftGlassGeometry = new THREE.PlaneGeometry(0.1, height, 4, 3);
-  const glassMaterial = new THREE.MeshStandardMaterial({
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
     color: 0xFFFFFF,
     roughness: 0.0,
     metalness: 0.0,
@@ -646,6 +645,7 @@ function createGlassPartition(parent) {
     normalMap: textures.glass.normal,
     transmission: 0.9,
     ior: 1.5,
+    thickness: 0.1,
   });
   const leftGlass = new THREE.Mesh(leftGlassGeometry, glassMaterial);
   leftGlass.rotation.y = Math.PI / 2;
@@ -1088,9 +1088,9 @@ function createWindow(x, y, z, rotationY = 0) {
   frame.name = 'WindowFrame';
   windowGroup.add(frame);
 
-  // 玻璃（改進）
+  // 玻璃（改進 - 使用 MeshPhysicalMaterial）
   const glassGeometry = new THREE.PlaneGeometry(1.9, 1.4);
-  const glassMaterial = new THREE.MeshStandardMaterial({
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
     color: 0x87CEEB,
     roughness: 0.0,
     metalness: 0.0,
@@ -1099,6 +1099,7 @@ function createWindow(x, y, z, rotationY = 0) {
     envMapIntensity: 1.0,
     transmission: 0.9,
     ior: 1.5,
+    thickness: 0.1,
     normalMap: textures.glass.normal,
   });
   const glass = new THREE.Mesh(glassGeometry, glassMaterial);
@@ -1184,13 +1185,6 @@ function setupPostProcessing() {
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
 
-  // SSAO（環境光遮蔽）
-  const ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
-  ssaoPass.kernelRadius = 16;
-  ssaoPass.minDistance = 0.005;
-  ssaoPass.maxDistance = 0.1;
-  composer.addPass(ssaoPass);
-
   // 泛光效果（增強）
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -1204,7 +1198,7 @@ function setupPostProcessing() {
   const smaaPass = new SMAAPass(window.innerWidth, window.innerHeight);
   composer.addPass(smaaPass);
 
-  console.log('[Office Generator V4] 後處理效果設置完成（含 SSAO）');
+  console.log('[Office Generator V4] 後處理效果設置完成');
 }
 
 // ============ 動畫循環 ============
