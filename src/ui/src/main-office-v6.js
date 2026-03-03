@@ -39,7 +39,7 @@ function init() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 0.25;  // 大幅降低曝光（1.0 → 0.25）
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -81,7 +81,7 @@ function loadOfficeModel() {
   };
 
   loader.load(
-    '/blender/exports/office_5person.glb',
+    '/blender/exports/office_v22.glb',
     (gltf) => {
       officeModel = gltf.scene;
       console.log('[Office V6] 模型載入成功！', officeModel);
@@ -92,11 +92,11 @@ function loadOfficeModel() {
           child.castShadow = true;
           child.receiveShadow = true;
 
-          // 增強材質
+          // 增強材質 - 降低環境反射強度
           if (child.material) {
-            // 確保材質正確渲染
             if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
-              // Blender 材質已經有正確的 PBR 設置
+              // 降低環境反射強度（envMapIntensity）
+              child.material.envMapIntensity = 0.3;
               child.material.needsUpdate = true;
             }
           }
@@ -170,17 +170,17 @@ function createFallbackScene() {
 function setupLighting() {
   console.log('[Office V6] 設置燈光...');
 
-  // 環境光
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  // 環境光（大幅降低）
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
   scene.add(ambientLight);
 
-  // 半球光（模擬天空和地面反射）
-  const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.6);
+  // 半球光（模擬天空和地面反射，大幅降低）
+  const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.2);
   hemisphereLight.position.set(0, 10, 0);
   scene.add(hemisphereLight);
 
-  // 主光源（模擬窗戶光）
-  const mainLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+  // 主光源（模擬窗戶光，大幅降低）
+  const mainLight = new THREE.DirectionalLight(0xfff5e6, 0.4);
   mainLight.position.set(10, 15, 5);
   mainLight.castShadow = true;
   mainLight.shadow.mapSize.width = 2048;
@@ -194,8 +194,8 @@ function setupLighting() {
   mainLight.shadow.bias = -0.0001;
   scene.add(mainLight);
 
-  // 填充光
-  const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5);
+  // 填充光（大幅降低）
+  const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.15);
   fillLight.position.set(-10, 10, -5);
   scene.add(fillLight);
 

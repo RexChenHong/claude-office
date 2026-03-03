@@ -115,6 +115,7 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -129,7 +130,7 @@
       console.log('[V6] 初始化...');
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xE8E8E8);
+      scene.background = new THREE.Color(0x1a1a2e);  // 深色背景
 
       camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(15, 10, 15);
@@ -141,7 +142,7 @@
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
+      renderer.toneMappingExposure = 0.2;  // 大幅降低曝光度（0.5 → 0.2）
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -154,9 +155,31 @@
 
       setupLighting();
       setupPostProcessing();
+      loadHDRI();
       loadOfficeModel();
 
       window.addEventListener('resize', onWindowResize);
+    }
+
+    function loadHDRI() {
+      loadingText.textContent = '載入環境光...';
+      console.log('[V6] 載入 HDRI 環境光...');
+
+      const rgbeLoader = new RGBELoader();
+
+      rgbeLoader.load(
+        'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_03_1k.hdr',
+        (texture) => {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          scene.environment = texture;
+          // 不設置背景，避免過度曝光
+          console.log('[V6] HDRI 環境光載入成功！');
+        },
+        undefined,
+        (error) => {
+          console.error('[V6] HDRI 載入失敗:', error);
+        }
+      );
     }
 
     function loadOfficeModel() {
@@ -166,7 +189,7 @@
       const loader = new GLTFLoader();
 
       loader.load(
-        '/blender/exports/office_complete.glb',
+        '/blender/exports/office_v19.glb',
         (gltf) => {
           officeModel = gltf.scene;
           console.log('[V6] 模型載入成功！', officeModel);
@@ -191,7 +214,6 @@
           controls.target.copy(center);
           controls.update();
 
-          // 隱藏載入畫面
           loadingOverlay.classList.add('hidden');
 
           console.log('[V6] 完成！');
@@ -205,8 +227,6 @@
         (error) => {
           console.error('[V6] 載入失敗:', error);
           loadingText.textContent = '載入失敗，嘗試備用方案...';
-
-          // 備用：創建簡單場景
           createFallbackScene();
           loadingOverlay.classList.add('hidden');
         }
@@ -233,13 +253,14 @@
     }
 
     function setupLighting() {
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
       scene.add(ambientLight);
 
-      const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.6);
+      const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.4);
+      hemisphereLight.position.set(0, 10, 0);
       scene.add(hemisphereLight);
 
-      const mainLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+      const mainLight = new THREE.DirectionalLight(0xfff5e6, 0.8);
       mainLight.position.set(10, 15, 5);
       mainLight.castShadow = true;
       mainLight.shadow.mapSize.width = 2048;
@@ -250,6 +271,7 @@
       mainLight.shadow.camera.right = 15;
       mainLight.shadow.camera.top = 15;
       mainLight.shadow.camera.bottom = -15;
+      mainLight.shadow.bias = -0.0001;
       scene.add(mainLight);
 
       const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5);
@@ -265,7 +287,9 @@
 
       const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.3, 0.4, 0.85
+        0.3,
+        0.4,
+        0.85
       );
       composer.addPass(bloomPass);
     }
@@ -280,6 +304,7 @@
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
+      if (mixer) mixer.update(clock.getDelta());
       if (composer) {
         composer.render();
       } else {
@@ -287,6 +312,7 @@
       }
     }
 
+    let mixer = null;
     init();
     animate();
   </script>
