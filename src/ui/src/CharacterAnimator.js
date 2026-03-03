@@ -67,6 +67,15 @@ export class CharacterAnimator {
       return null;
     }
 
+    // 對 textures 排序以確保動畫順序正確
+    textures.sort((a, b) => {
+      const frameA = parseInt(a.textureCache.textureCacheIds?.frameId || 0);
+      const frameB = parseInt(b.textureCache.textureCacheIds?.frameId || 0);
+      return frameA - frameB;
+    });
+
+    console.log(`[Animator] ${characterId} - ${action} 共 ${textures.length} 幀`);
+
     const animatedSprite = new AnimatedSprite(textures);
     animatedSprite.animationSpeed = this.animationSpeed;
     animatedSprite.anchor.set(0.5, 1); // 底部中心
