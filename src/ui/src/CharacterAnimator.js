@@ -24,22 +24,22 @@ export class CharacterAnimator {
 
     for (const action of actions) {
       try {
-        const spritePath = `/assets/sprites/${characterId}/${action}.json`;
+        const jsonPath = `/assets/sprites/${characterId}/${action}.json`;
         
-        // 註冊 sprite sheet
-        Assets.add({
-          alias: `${characterId}_${action}`,
-          src: spritePath,
-          data: { format: 'json' }
-        });
-
-        const spritesheet = await Assets.load(`${characterId}_${action}`);
+        // 1. 使用 fetch 載入 JSON
+        const response = await fetch(jsonPath);
+        const jsonData = await response.json();
         
-        if (spritesheet instanceof Spritesheet) {
-          await spritesheet.parse();
-          loadedSpritesheets[action] = spritesheet;
-          console.log(`[Animator] 載入 ${characterId} - ${action} 成功`);
-        }
+        // 2. 載入對應的 PNG 圖片
+        const pngPath = `/assets/sprites/${characterId}/${action}.png`;
+        const texture = await Texture.from(pngPath);
+        
+        // 3. 創建 Spritesheet
+        const spritesheet = new Spritesheet(texture, jsonData);
+        await spritesheet.parse();
+        
+        loadedSpritesheets[action] = spritesheet;
+        console.log(`[Animator] 載入 ${characterId} - ${action} 成功`);
       } catch (err) {
         console.warn(`[Animator] 載入 ${characterId} - ${action} 失敗:`, err);
       }
