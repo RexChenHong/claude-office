@@ -4,7 +4,7 @@
  * 處理角色 sprite sheet 動畫播放與狀態切換
  */
 
-import { AnimatedSprite, Spritesheet, Assets, Texture } from 'pixi.js';
+import { AnimatedSprite, Spritesheet, Assets, Texture, TextureSource } from 'pixi.js';
 
 export class CharacterAnimator {
   constructor() {
@@ -32,7 +32,7 @@ export class CharacterAnimator {
         
         // 2. 載入對應的 PNG 圖片
         const pngPath = `/assets/sprites/${characterId}/${action}.png`;
-        const texture = await Texture.from(pngPath);
+        const texture = await Assets.load(pngPath);
         
         // 3. 創建 Spritesheet
         const spritesheet = new Spritesheet(texture, jsonData);
