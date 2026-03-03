@@ -47,7 +47,7 @@ function init() {
   renderer.shadowMap.enabled = true;  // 開啟陰影
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.5;
+  renderer.toneMappingExposure = 0.8;  // 降低曝光（1.5 → 0.8）
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.physicallyCorrectLights = true;
   document.getElementById('game-container').appendChild(renderer.domElement);
