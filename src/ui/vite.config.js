@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  publicDir: 'public',
   server: {
     host: '0.0.0.0',
     port: 8055,
-    strictPort: true, // 端口被占用時報錯，不自動跳
+    strictPort: true,
+    fs: {
+      strict: false,
+    }
   },
   build: {
     outDir: 'dist',
