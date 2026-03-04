@@ -163,7 +163,7 @@
               const objName = child.name?.toLowerCase() || '';
               
               // 玻璃隔間 - 半透明（調高可見度）
-              if (matName.includes('glass') || objName.includes('glass')) {
+              if (matName.includes('glass') || objName.includes('glass') || matName.includes('meetingroomwall')) {
                 child.material = new THREE.MeshPhysicalMaterial({
                   color: 0xd8ecf2,
                   transparent: true,

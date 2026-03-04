@@ -425,6 +425,9 @@ meeting_room_depth = 6.0 - wall_thick   # 扣除牆壁厚度
 meeting_room_x = -5.0      # 中心 x
 meeting_room_y = -4.0      # 中心 y
 
+# 會議室牆壁材質（玻璃，但名稱不包含 glass）
+mat_meeting_wall = create_material("MeetingRoomWall", (0.7, 0.85, 0.9, 1.0), roughness=0.05, metallic=0.0)
+
 # 西牆（x=-8 + wall_thick/2，在地板邊緣內側）
 west_wall_x = -8.0 + wall_thick/2
 bpy.ops.mesh.primitive_cube_add(size=2)
@@ -432,34 +435,35 @@ west_wall = bpy.context.active_object
 west_wall.name = "MeetingRoom_West"
 west_wall.scale = (wall_thick/2, meeting_room_depth/2, wall_height/2)
 west_wall.location = (west_wall_x, meeting_room_y, wall_height/2)
-west_wall.data.materials.append(mat_glass)
+west_wall.data.materials.append(mat_meeting_wall)
 
-# 西牆上的液晶電視
+# 西牆上的液晶電視（面向東，朝向會議桌）
 tv_width = 2.0   # 2 米寬（大型電視）
 tv_height = 1.2  # 1.2 米高
 tv_depth = 0.05  # 5cm 厚度
 tv_z = 1.5       # 電視中心高度 1.5m
 
-# 電視邊框（黑色，完全不透明）
+# 電視材質
 mat_tv_frame = create_material("TVFrame", (0.02, 0.02, 0.02, 1.0), roughness=0.15, metallic=0.7)
-# 電視屏幕（深黑色發光，完全不透明）
 mat_tv_screen = create_material("TVScreen", (0.01, 0.01, 0.01, 1.0), roughness=0.02, emission=(0.08, 0.1, 0.12, 1.0))
 
-# 電視主體（邊框）
+# 電視主體（在西牆東側，面向東）
 bpy.ops.mesh.primitive_cube_add(size=2)
 tv_body = bpy.context.active_object
 tv_body.name = "MeetingRoom_TV_Body"
 tv_body.scale = (tv_depth/2, tv_width/2, tv_height/2)
-tv_body.location = (west_wall_x - tv_depth/2 - 0.01, meeting_room_y, tv_z)
+tv_body.location = (west_wall_x + wall_thick/2 + tv_depth/2, meeting_room_y, tv_z)  # 在牆的東側
+tv_body.rotation_euler = (0, 0, 0)  # 面向東（朝向會議桌）
 tv_body.data.materials.append(mat_tv_frame)
 add_bevel(tv_body, segments=2, width=0.005)
 
-# 電視屏幕（發光）
+# 電視屏幕（在電視東側，面向東）
 bpy.ops.mesh.primitive_cube_add(size=2)
 tv_screen = bpy.context.active_object
 tv_screen.name = "MeetingRoom_TV_Screen"
 tv_screen.scale = (0.01, tv_width/2 - 0.04, tv_height/2 - 0.04)  # 比邊框小一點
-tv_screen.location = (west_wall_x - tv_depth - 0.02, meeting_room_y, tv_z)
+tv_screen.location = (west_wall_x + wall_thick/2 + tv_depth + 0.01, meeting_room_y, tv_z)  # 在電視東側
+tv_screen.rotation_euler = (0, 0, 0)  # 面向東
 tv_screen.data.materials.append(mat_tv_screen)
 
 # 電視支架（掛牆架）
@@ -467,20 +471,20 @@ mat_tv_bracket = create_material("TVBracket", (0.3, 0.3, 0.32, 1), roughness=0.2
 bracket_width = 0.15
 bracket_height = 0.3
 
-# 左支架
+# 左支架（固定在牆上）
 bpy.ops.mesh.primitive_cube_add(size=2)
 bracket_left = bpy.context.active_object
 bracket_left.name = "MeetingRoom_TV_Bracket_Left"
 bracket_left.scale = (0.1, bracket_width/2, bracket_height/2)
-bracket_left.location = (west_wall_x + 0.05, meeting_room_y - tv_width/4, tv_z)
+bracket_left.location = (west_wall_x + wall_thick/2 - 0.05, meeting_room_y - tv_width/4, tv_z)
 bracket_left.data.materials.append(mat_tv_bracket)
 
-# 右支架
+# 右支架（固定在牆上）
 bpy.ops.mesh.primitive_cube_add(size=2)
 bracket_right = bpy.context.active_object
 bracket_right.name = "MeetingRoom_TV_Bracket_Right"
 bracket_right.scale = (0.1, bracket_width/2, bracket_height/2)
-bracket_right.location = (west_wall_x + 0.05, meeting_room_y + tv_width/4, tv_z)
+bracket_right.location = (west_wall_x + wall_thick/2 - 0.05, meeting_room_y + tv_width/4, tv_z)
 bracket_right.data.materials.append(mat_tv_bracket)
 
 # 南牆（y=-7 + wall_thick/2，在地板邊緣內側）
@@ -490,7 +494,7 @@ south_wall = bpy.context.active_object
 south_wall.name = "MeetingRoom_South"
 south_wall.scale = (meeting_room_width/2, wall_thick/2, wall_height/2)
 south_wall.location = (meeting_room_x, south_wall_y, wall_height/2)
-south_wall.data.materials.append(mat_glass)
+south_wall.data.materials.append(mat_meeting_wall)
 
 # 北牆（y=-1，延伸連接西面和東面）
 north_wall_y = -1.0
@@ -499,7 +503,7 @@ north_wall = bpy.context.active_object
 north_wall.name = "MeetingRoom_North"
 north_wall.scale = (meeting_room_width/2, wall_thick/2, wall_height/2)
 north_wall.location = (meeting_room_x, north_wall_y, wall_height/2)
-north_wall.data.materials.append(mat_glass)
+north_wall.data.materials.append(mat_meeting_wall)
 
 # 東牆（x=-2，有門，延伸連接北面和南面）
 east_wall_x = -2.0
@@ -511,7 +515,7 @@ east_wall_north = bpy.context.active_object
 east_wall_north.name = "MeetingRoom_East_North"
 east_wall_north.scale = (wall_thick/2, (meeting_room_depth/2 - door_width_room/2)/2, wall_height/2)
 east_wall_north.location = (east_wall_x, meeting_room_y + meeting_room_depth/4 + door_width_room/4, wall_height/2)
-east_wall_north.data.materials.append(mat_glass)
+east_wall_north.data.materials.append(mat_meeting_wall)
 
 # 東牆南段（門南邊）
 bpy.ops.mesh.primitive_cube_add(size=2)
@@ -519,7 +523,7 @@ east_wall_south = bpy.context.active_object
 east_wall_south.name = "MeetingRoom_East_South"
 east_wall_south.scale = (wall_thick/2, (meeting_room_depth/2 - door_width_room/2)/2, wall_height/2)
 east_wall_south.location = (east_wall_x, meeting_room_y - meeting_room_depth/4 - door_width_room/4, wall_height/2)
-east_wall_south.data.materials.append(mat_glass)
+east_wall_south.data.materials.append(mat_meeting_wall)
 
 # 東牆門框上方
 bpy.ops.mesh.primitive_cube_add(size=2)
@@ -527,7 +531,7 @@ east_wall_top = bpy.context.active_object
 east_wall_top.name = "MeetingRoom_East_Top"
 east_wall_top.scale = (wall_thick/2, door_width_room/2, (wall_height - door_height)/2)
 east_wall_top.location = (east_wall_x, meeting_room_y, door_height + (wall_height - door_height)/2)
-east_wall_top.data.materials.append(mat_glass)
+east_wall_top.data.materials.append(mat_meeting_wall)
 
 # 會議室鐵柱（四個角落）
 meeting_pillar_positions = [
