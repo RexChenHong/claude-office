@@ -416,19 +416,418 @@ create_chair(4.5, 5.5 + chair_offset, rot=math.pi, index="_WS4")
 create_desk(6.5, 5.5, rot=0, index=5)
 create_chair(6.5, 5.5 + chair_offset, rot=math.pi, index="_WS5")
 
-# ========== 會議室牆壁（寬敞版，西面和南面貼齊地毯邊緣）==========
+# ========== 地毯外圍鐵欄杆（監獄風格）==========
 # 地板範圍：x: -8~8, y: -7~7
-# 牆壁厚度：0.3m
-# 會議室尺寸（更寬敞）
-meeting_room_width = 6.0 - wall_thick   # 扣除牆壁厚度
-meeting_room_depth = 6.0 - wall_thick   # 扣除牆壁厚度
-meeting_room_x = -5.0      # 中心 x
-meeting_room_y = -4.0      # 中心 y
+# 鐵欄杆材質
+mat_iron_bar = create_material("IronBar", (0.15, 0.15, 0.17, 1.0), roughness=0.3, metallic=0.9)
 
-# 會議室牆壁材質（玻璃，但名稱不包含 glass）
+bar_radius = 0.03  # 欄杆半徑 3cm
+bar_spacing = 0.15  # 欄杆間距 15cm
+
+# 西面鐵欄杆（x=-8，從 y=-7 到 y=7）
+west_fence_x = -8.0
+fence_length_west = 14.0  # y: -7 到 7
+num_bars_west = int(fence_length_west / bar_spacing) + 1
+
+for i in range(num_bars_west):
+    bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius, depth=wall_height)
+    bar = bpy.context.active_object
+    bar.name = f"West_Fence_Bar_{i}"
+    bar_y = -7.0 + i * bar_spacing
+    bar.location = (west_fence_x, bar_y, wall_height/2)
+    bar.data.materials.append(mat_iron_bar)
+
+# 西面頂部和底部橫桿
+bpy.ops.mesh.primitive_cube_add(size=2)
+top_bar_west = bpy.context.active_object
+top_bar_west.name = "West_Fence_TopBar"
+top_bar_west.scale = (0.05, fence_length_west/2, 0.05)
+top_bar_west.location = (west_fence_x, 0, wall_height - 0.05)
+top_bar_west.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+bottom_bar_west = bpy.context.active_object
+bottom_bar_west.name = "West_Fence_BottomBar"
+bottom_bar_west.scale = (0.05, fence_length_west/2, 0.05)
+bottom_bar_west.location = (west_fence_x, 0, 0.05)
+bottom_bar_west.data.materials.append(mat_iron_bar)
+
+# 北面鐵欄杆（y=7，從 x=-8 到 x=8）
+north_fence_y = 7.0
+fence_length_north = 16.0  # x: -8 到 8
+num_bars_north = int(fence_length_north / bar_spacing) + 1
+
+for i in range(num_bars_north):
+    bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius, depth=wall_height)
+    bar = bpy.context.active_object
+    bar.name = f"North_Fence_Bar_{i}"
+    bar_x = -8.0 + i * bar_spacing
+    bar.location = (bar_x, north_fence_y, wall_height/2)
+    bar.data.materials.append(mat_iron_bar)
+
+# 北面頂部和底部橫桿
+bpy.ops.mesh.primitive_cube_add(size=2)
+top_bar_north = bpy.context.active_object
+top_bar_north.name = "North_Fence_TopBar"
+top_bar_north.scale = (fence_length_north/2, 0.05, 0.05)
+top_bar_north.location = (0, north_fence_y, wall_height - 0.05)
+top_bar_north.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+bottom_bar_north = bpy.context.active_object
+bottom_bar_north.name = "North_Fence_BottomBar"
+bottom_bar_north.scale = (fence_length_north/2, 0.05, 0.05)
+bottom_bar_north.location = (0, north_fence_y, 0.05)
+bottom_bar_north.data.materials.append(mat_iron_bar)
+
+# 東面鐵欄杆（x=8，從長牆 y=3 到地毯邊緣 y=7）
+east_fence_x = 8.0
+fence_length_east = 4.0  # y: 3 到 7
+num_bars_east = int(fence_length_east / bar_spacing) + 1
+
+for i in range(num_bars_east):
+    bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius, depth=wall_height)
+    bar = bpy.context.active_object
+    bar.name = f"East_Fence_Bar_{i}"
+    bar_y = 3.0 + i * bar_spacing
+    bar.location = (east_fence_x, bar_y, wall_height/2)
+    bar.data.materials.append(mat_iron_bar)
+
+# 東面頂部和底部橫桿
+bpy.ops.mesh.primitive_cube_add(size=2)
+top_bar_east = bpy.context.active_object
+top_bar_east.name = "East_Fence_TopBar"
+top_bar_east.scale = (0.05, fence_length_east/2, 0.05)
+top_bar_east.location = (east_fence_x, 5.0, wall_height - 0.05)
+top_bar_east.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+bottom_bar_east = bpy.context.active_object
+bottom_bar_east.name = "East_Fence_BottomBar"
+bottom_bar_east.scale = (0.05, fence_length_east/2, 0.05)
+bottom_bar_east.location = (east_fence_x, 5.0, 0.05)
+bottom_bar_east.data.materials.append(mat_iron_bar)
+
+# ========== 牢房區（東南角落，取代休息區）==========
+# 5間牢房，橫向排列
+cell_width = 1.6   # 每間牢房寬度 1.6m
+cell_depth = 3.0   # 每間牢房深度 3m
+cell_height = 3.0  # 牢房高度 3m
+cell_start_x = 0.0  # 起始位置 x
+cell_y = -5.5       # 牢房中心 y（y = -7 到 -4）
+bar_radius_cell = 0.02  # 牢房欄杆半徑 2cm
+bar_spacing_cell = 0.2  # 牢房欄杆間距 20cm（優化性能）
+
+# 沙發材質
+mat_sofa = create_material("Sofa", (0.3, 0.15, 0.1, 1.0), roughness=0.9, metallic=0.0)
+
+# 創建5間牢房
+for cell_idx in range(5):
+    cell_center_x = cell_start_x + cell_idx * cell_width + cell_width/2
+    cell_name = f"Cell_{cell_idx + 1}"
+    
+    # 牢房前牆（鐵欄杆，面向北）- 包含門
+    front_wall_y = cell_y + cell_depth/2
+    num_bars_front = int(cell_width / bar_spacing_cell) + 1
+    door_width = 0.8  # 門寬度 80cm
+    door_height = 2.2  # 門高度 2.2m
+    
+    # 門的位置（牢房中心）
+    door_x = cell_center_x
+    
+    # 左側固定欄杆（門左邊）
+    left_fixed_width = (cell_width - door_width) / 2
+    num_bars_left = int(left_fixed_width / bar_spacing_cell) + 1
+    
+    for i in range(num_bars_left):
+        bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=cell_height)
+        bar = bpy.context.active_object
+        bar.name = f"{cell_name}_Front_Left_Bar_{i}"
+        bar_x = cell_center_x - cell_width/2 + i * bar_spacing_cell
+        bar.location = (bar_x, front_wall_y, cell_height/2)
+        bar.data.materials.append(mat_iron_bar)
+    
+    # 右側固定欄杆（門右邊）
+    right_start_x = door_x + door_width/2
+    num_bars_right = int(left_fixed_width / bar_spacing_cell) + 1
+
+    for i in range(num_bars_right):
+        bar_x = right_start_x + i * bar_spacing_cell
+        if bar_x <= cell_center_x + cell_width/2:
+            bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=cell_height)
+            bar = bpy.context.active_object
+            bar.name = f"{cell_name}_Front_Right_Bar_{i}"
+            bar.location = (bar_x, front_wall_y, cell_height/2)
+            bar.data.materials.append(mat_iron_bar)
+    
+    # 門框（鐵欄杆門框架，門內部不包含欄杆，因為門會活動）
+    # 門框頂部橫桿
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    door_top_bar = bpy.context.active_object
+    door_top_bar.name = f"{cell_name}_Door_TopBar"
+    door_top_bar.scale = (door_width/2, 0.03, 0.03)
+    door_top_bar.location = (door_x, front_wall_y, door_height)
+    door_top_bar.data.materials.append(mat_iron_bar)
+    
+    # 門框底部橫桿
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    door_bottom_bar = bpy.context.active_object
+    door_bottom_bar.name = f"{cell_name}_Door_BottomBar"
+    door_bottom_bar.scale = (door_width/2, 0.03, 0.03)
+    door_bottom_bar.location = (door_x, front_wall_y, 0.03)
+    door_bottom_bar.data.materials.append(mat_iron_bar)
+    
+    # 門框左側豎桿
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    door_left_bar = bpy.context.active_object
+    door_left_bar.name = f"{cell_name}_Door_LeftBar"
+    door_left_bar.scale = (0.03, 0.03, door_height/2)
+    door_left_bar.location = (door_x - door_width/2, front_wall_y, door_height/2)
+    door_left_bar.data.materials.append(mat_iron_bar)
+    
+    # 門框右側豎桿
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    door_right_bar = bpy.context.active_object
+    door_right_bar.name = f"{cell_name}_Door_RightBar"
+    door_right_bar.scale = (0.03, 0.03, door_height/2)
+    door_right_bar.location = (door_x + door_width/2, front_wall_y, door_height/2)
+    door_right_bar.data.materials.append(mat_iron_bar)
+    
+    # 整個前牆的頂部橫桿（橫跨整個牢房寬度）
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    wall_top_bar = bpy.context.active_object
+    wall_top_bar.name = f"{cell_name}_Wall_TopBar"
+    wall_top_bar.scale = (cell_width/2, 0.03, 0.03)
+    wall_top_bar.location = (cell_center_x, front_wall_y, cell_height - 0.03)
+    wall_top_bar.data.materials.append(mat_iron_bar)
+    
+    # 整個前牆的底部橫桿（橫跨整個牢房寬度）
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    wall_bottom_bar = bpy.context.active_object
+    wall_bottom_bar.name = f"{cell_name}_Wall_BottomBar"
+    wall_bottom_bar.scale = (cell_width/2, 0.03, 0.03)
+    wall_bottom_bar.location = (cell_center_x, front_wall_y, 0.03)
+    wall_bottom_bar.data.materials.append(mat_iron_bar)
+    
+    # 門頂到天花板之間的垂直欄杆（補充）
+    gap_height = cell_height - door_height
+    num_bars_above_door = int(door_width / bar_spacing_cell) + 1
+    for i in range(num_bars_above_door):
+        bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=gap_height)
+        bar = bpy.context.active_object
+        bar.name = f"{cell_name}_Above_Door_Bar_{i}"
+        bar_x = door_x - door_width/2 + i * bar_spacing_cell
+        bar.location = (bar_x, front_wall_y, door_height + gap_height/2)
+        bar.data.materials.append(mat_iron_bar)
+    
+    # 沙發（在牢房內部，靠後牆）- 擬真化設計
+    sofa_width = 1.2
+    sofa_depth = 0.6
+    sofa_height = 0.85
+    sofa_seat_height = 0.45
+    sofa_x = cell_center_x
+    sofa_y = cell_y - cell_depth/2 + sofa_depth/2 + 0.15
+
+    # 沙發材質 - 更擬真的布料
+    mat_sofa_fabric = create_material("SofaFabric", (0.35, 0.2, 0.15, 1.0), roughness=0.95, metallic=0.0)
+    mat_sofa_cushion = create_material("SofaCushion", (0.4, 0.25, 0.18, 1.0), roughness=0.9, metallic=0.0)
+    mat_sofa_frame = create_material("SofaFrame", (0.25, 0.15, 0.1, 1.0), roughness=0.7, metallic=0.0)
+
+    # 沙發腳（4個，圓柱形）
+    leg_height = 0.08
+    leg_radius = 0.025
+    for dx, dy in [(-sofa_width/2 + 0.08, -sofa_depth/2 + 0.08),
+                    (sofa_width/2 - 0.08, -sofa_depth/2 + 0.08),
+                    (-sofa_width/2 + 0.08, sofa_depth/2 - 0.08),
+                    (sofa_width/2 - 0.08, sofa_depth/2 - 0.08)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=leg_radius, depth=leg_height)
+        leg = bpy.context.active_object
+        leg.name = f"{cell_name}_Sofa_Leg"
+        leg.location = (sofa_x + dx, sofa_y + dy, leg_height/2)
+        leg.data.materials.append(mat_sofa_frame)
+
+    # 沙發底座框架
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    base_frame = bpy.context.active_object
+    base_frame.name = f"{cell_name}_Sofa_BaseFrame"
+    base_frame.scale = (sofa_width/2, sofa_depth/2, 0.12)
+    base_frame.location = (sofa_x, sofa_y, leg_height + 0.06)
+    base_frame.data.materials.append(mat_sofa_frame)
+
+    # 沙發坐墊（3個，分離式）
+    cushion_width = (sofa_width - 0.06) / 3
+    cushion_gap = 0.02
+    for i in range(3):
+        cushion_x = sofa_x - sofa_width/2 + cushion_width/2 + 0.03 + i * (cushion_width + cushion_gap)
+        # 坐墊底層
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        cushion_base = bpy.context.active_object
+        cushion_base.name = f"{cell_name}_Sofa_CushionBase_{i}"
+        cushion_base.scale = (cushion_width/2, (sofa_depth - 0.1)/2, 0.15)
+        cushion_base.location = (cushion_x, sofa_y + 0.03, leg_height + 0.12 + 0.075)
+        cushion_base.data.materials.append(mat_sofa_frame)
+        add_bevel(cushion_base, segments=2, width=0.02)
+        
+        # 坐墊上層（軟墊）
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        cushion_top = bpy.context.active_object
+        cushion_top.name = f"{cell_name}_Sofa_CushionTop_{i}"
+        cushion_top.scale = (cushion_width/2 - 0.01, (sofa_depth - 0.08)/2, 0.08)
+        cushion_top.location = (cushion_x, sofa_y + 0.04, leg_height + 0.12 + 0.15 + 0.04)
+        cushion_top.data.materials.append(mat_sofa_cushion)
+        add_bevel(cushion_top, segments=3, width=0.03)
+
+    # 沙發靠背（分段式，3個靠墊）
+    back_height = sofa_height - leg_height - 0.12 - 0.15 - 0.08
+    for i in range(3):
+        back_x = sofa_x - sofa_width/2 + cushion_width/2 + 0.03 + i * (cushion_width + cushion_gap)
+        # 靠背框架
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        back_frame = bpy.context.active_object
+        back_frame.name = f"{cell_name}_Sofa_BackFrame_{i}"
+        back_frame.scale = (cushion_width/2, 0.12, back_height/2)
+        back_frame.location = (back_x, sofa_y - sofa_depth/2 + 0.06, leg_height + 0.12 + 0.15 + 0.08 + back_height/2)
+        back_frame.data.materials.append(mat_sofa_frame)
+        
+        # 靠墊（軟墊）
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        back_cushion = bpy.context.active_object
+        back_cushion.name = f"{cell_name}_Sofa_BackCushion_{i}"
+        back_cushion.scale = (cushion_width/2 - 0.02, 0.15, back_height/2 - 0.02)
+        back_cushion.location = (back_x, sofa_y - sofa_depth/2 + 0.15, leg_height + 0.12 + 0.15 + 0.08 + back_height/2)
+        back_cushion.data.materials.append(mat_sofa_fabric)
+        add_bevel(back_cushion, segments=3, width=0.02)
+        
+        # 靠墊縫線裝飾
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        stitch = bpy.context.active_object
+        stitch.name = f"{cell_name}_Sofa_Stitch_{i}"
+        stitch.scale = (0.005, 0.16, back_height/2 - 0.05)
+        stitch.location = (back_x, sofa_y - sofa_depth/2 + 0.18, leg_height + 0.12 + 0.15 + 0.08 + back_height/2)
+        stitch.data.materials.append(mat_sofa_frame)
+
+    # 沙發扶手（左右，帶軟墊）
+    arm_height = sofa_height - leg_height - 0.12
+    arm_width = 0.12
+    for side, dx in [("Left", -sofa_width/2 + arm_width/2), ("Right", sofa_width/2 - arm_width/2)]:
+        # 扶手框架
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        arm_frame = bpy.context.active_object
+        arm_frame.name = f"{cell_name}_Sofa_ArmFrame_{side}"
+        arm_frame.scale = (arm_width/2, sofa_depth/2, arm_height/2)
+        arm_frame.location = (sofa_x + dx, sofa_y, leg_height + 0.12 + arm_height/2)
+        arm_frame.data.materials.append(mat_sofa_frame)
+        add_bevel(arm_frame, segments=2, width=0.015)
+        
+        # 扶手軟墊
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        arm_cushion = bpy.context.active_object
+        arm_cushion.name = f"{cell_name}_Sofa_ArmCushion_{side}"
+        arm_cushion.scale = (arm_width/2 - 0.01, sofa_depth/2 - 0.02, arm_height/2 - 0.01)
+        arm_cushion.location = (sofa_x + dx, sofa_y, leg_height + 0.12 + arm_height/2)
+        arm_cushion.data.materials.append(mat_sofa_cushion)
+        add_bevel(arm_cushion, segments=3, width=0.02)
+
+    # 沙發裝飾細節：扶手頂部圓角
+    for side, dx in [("Left", -sofa_width/2 + arm_width/2), ("Right", sofa_width/2 - arm_width/2)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=arm_width/2 - 0.01, depth=sofa_depth - 0.04)
+        arm_top = bpy.context.active_object
+        arm_top.name = f"{cell_name}_Sofa_ArmTop_{side}"
+        arm_top.rotation_euler = (math.pi/2, 0, 0)
+        arm_top.location = (sofa_x + dx, sofa_y, leg_height + 0.12 + arm_height - 0.01)
+        arm_top.data.materials.append(mat_sofa_cushion)
+
+# 牢房分隔牆（每間牢房之間的鐵欄杆）
+for cell_idx in range(4):  # 5間牢房需要4面分隔牆
+    wall_x = cell_start_x + (cell_idx + 1) * cell_width
+    num_bars_divider = int(cell_depth / bar_spacing_cell) + 1
+    
+    for i in range(num_bars_divider):
+        bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=cell_height)
+        bar = bpy.context.active_object
+        bar.name = f"Cell_Divider_{cell_idx}_Bar_{i}"
+        bar_y = cell_y - cell_depth/2 + i * bar_spacing_cell
+        bar.location = (wall_x, bar_y, cell_height/2)
+        bar.data.materials.append(mat_iron_bar)
+    
+    # 分隔牆頂部和底部橫桿
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    top_bar_div = bpy.context.active_object
+    top_bar_div.name = f"Cell_Divider_{cell_idx}_TopBar"
+    top_bar_div.scale = (0.03, cell_depth/2, 0.03)
+    top_bar_div.location = (wall_x, cell_y, cell_height - 0.03)
+    top_bar_div.data.materials.append(mat_iron_bar)
+    
+    bpy.ops.mesh.primitive_cube_add(size=2)
+    bottom_bar_div = bpy.context.active_object
+    bottom_bar_div.name = f"Cell_Divider_{cell_idx}_BottomBar"
+    bottom_bar_div.scale = (0.03, cell_depth/2, 0.03)
+    bottom_bar_div.location = (wall_x, cell_y, 0.03)
+    bottom_bar_div.data.materials.append(mat_iron_bar)
+
+# 第一間牢房左側牆
+first_cell_center_x = cell_start_x + cell_width/2
+left_wall_x = first_cell_center_x - cell_width/2
+num_bars_side_first = int(cell_depth / bar_spacing_cell) + 1
+
+for i in range(num_bars_side_first):
+    bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=cell_height)
+    bar = bpy.context.active_object
+    bar.name = f"Cell_First_Left_Bar_{i}"
+    bar_y = cell_y - cell_depth/2 + i * bar_spacing_cell
+    bar.location = (left_wall_x, bar_y, cell_height/2)
+    bar.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+top_bar_first_left = bpy.context.active_object
+top_bar_first_left.name = "Cell_First_Left_TopBar"
+top_bar_first_left.scale = (0.03, cell_depth/2, 0.03)
+top_bar_first_left.location = (left_wall_x, cell_y, cell_height - 0.03)
+top_bar_first_left.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+bottom_bar_first_left = bpy.context.active_object
+bottom_bar_first_left.name = "Cell_First_Left_BottomBar"
+bottom_bar_first_left.scale = (0.03, cell_depth/2, 0.03)
+bottom_bar_first_left.location = (left_wall_x, cell_y, 0.03)
+bottom_bar_first_left.data.materials.append(mat_iron_bar)
+
+# 最後一間牢房右側牆
+last_cell_center_x = cell_start_x + 4 * cell_width + cell_width/2
+right_wall_x = last_cell_center_x + cell_width/2
+num_bars_side_last = int(cell_depth / bar_spacing_cell) + 1
+
+for i in range(num_bars_side_last):
+    bpy.ops.mesh.primitive_cylinder_add(radius=bar_radius_cell, depth=cell_height)
+    bar = bpy.context.active_object
+    bar.name = f"Cell_Last_Right_Bar_{i}"
+    bar_y = cell_y - cell_depth/2 + i * bar_spacing_cell
+    bar.location = (right_wall_x, bar_y, cell_height/2)
+    bar.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+top_bar_right_last = bpy.context.active_object
+top_bar_right_last.name = "Cell_Last_Right_TopBar"
+top_bar_right_last.scale = (0.03, cell_depth/2, 0.03)
+top_bar_right_last.location = (right_wall_x, cell_y, cell_height - 0.03)
+top_bar_right_last.data.materials.append(mat_iron_bar)
+
+bpy.ops.mesh.primitive_cube_add(size=2)
+bottom_bar_right_last = bpy.context.active_object
+bottom_bar_right_last.name = "Cell_Last_Right_BottomBar"
+bottom_bar_right_last.scale = (0.03, cell_depth/2, 0.03)
+bottom_bar_right_last.location = (right_wall_x, cell_y, 0.03)
+bottom_bar_right_last.data.materials.append(mat_iron_bar)
+
+# ========== 會議室牆壁（玻璃材質）==========
+meeting_room_width = 6.0 - wall_thick
+meeting_room_depth = 6.0 - wall_thick
+meeting_room_x = -5.0
+meeting_room_y = -4.0
+
 mat_meeting_wall = create_material("MeetingRoomWall", (0.7, 0.85, 0.9, 1.0), roughness=0.05, metallic=0.0)
 
-# 西牆（x=-8 + wall_thick/2，在地板邊緣內側）
+# 西牆（玻璃）
 west_wall_x = -8.0 + wall_thick/2
 bpy.ops.mesh.primitive_cube_add(size=2)
 west_wall = bpy.context.active_object
@@ -496,7 +895,7 @@ south_wall.scale = (meeting_room_width/2, wall_thick/2, wall_height/2)
 south_wall.location = (meeting_room_x, south_wall_y, wall_height/2)
 south_wall.data.materials.append(mat_meeting_wall)
 
-# 北牆（y=-1，延伸連接西面和東面）
+# 北牆（玻璃）
 north_wall_y = -1.0
 bpy.ops.mesh.primitive_cube_add(size=2)
 north_wall = bpy.context.active_object

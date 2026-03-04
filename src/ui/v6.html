@@ -175,6 +175,15 @@
                 });
                 console.log(`[V6] 應用玻璃到: ${child.name}`);
               }
+              // 鐵柱/鐵欄杆 - 金屬質感
+              else if (matName.includes('iron') || matName.includes('ironbar')) {
+                child.material = new THREE.MeshStandardMaterial({
+                  color: 0x404040,
+                  roughness: 0.3,
+                  metalness: 0.9
+                });
+                console.log(`[V6] 應用鐵柱到: ${child.name}`);
+              }
               // 電視 - 完全不透明
               else if (matName.includes('tv') || objName.includes('tv')) {
                 const isScreen = matName.includes('screen') || objName.includes('screen');
