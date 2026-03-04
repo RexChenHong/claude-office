@@ -148,21 +148,35 @@
       const loader = new GLTFLoader();
 
       loader.load(
-        '/blender/exports/office_v33.glb',
+        '/blender/exports/office_v35.glb',
         (gltf) => {
           officeModel = gltf.scene;
           console.log('[V6] 模型載入成功！');
 
-          // 遍歷所有 mesh，應用紋理
+          // 遍歷所有 mesh，應用紋理和材質
           officeModel.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
 
               const matName = child.material?.name?.toLowerCase() || '';
+              const objName = child.name?.toLowerCase() || '';
               
+              // 玻璃隔間 - 半透明
+              if (matName.includes('glass') || objName.includes('glass')) {
+                child.material = new THREE.MeshPhysicalMaterial({
+                  color: 0xd8ecf2,
+                  transparent: true,
+                  opacity: 0.3,
+                  roughness: 0.1,
+                  metalness: 0.0,
+                  transmission: 0.9,
+                  thickness: 0.5
+                });
+                console.log(`[V6] 應用玻璃到: ${child.name}`);
+              }
               // 地板 - 應用木紋
-              if (matName.includes('wood') || matName.includes('floor') || child.geometry.type === 'PlaneGeometry') {
+              else if (matName.includes('wood') || matName.includes('floor') || child.geometry.type === 'PlaneGeometry') {
                 if (woodTexture) {
                   child.material = new THREE.MeshStandardMaterial({
                     map: woodTexture,
@@ -173,7 +187,7 @@
                 }
               }
               // 椅座/沙發 - 應用布料
-              else if (matName.includes('fabric') || matName.includes('seat') || matName.includes('sofa')) {
+              else if (matName.includes('fabric') || matName.includes('seat') || matName.includes('sofa') || objName.includes('seat') || objName.includes('chairback')) {
                 if (fabricTexture) {
                   child.material = new THREE.MeshStandardMaterial({
                     map: fabricTexture,
