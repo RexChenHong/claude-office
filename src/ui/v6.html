@@ -148,7 +148,7 @@
       const loader = new GLTFLoader();
 
       loader.load(
-        '/blender/exports/office_v63.glb',
+        '/blender/exports/office_v64.glb',
         (gltf) => {
           officeModel = gltf.scene;
           console.log('[V6] 模型載入成功！');
@@ -174,6 +174,20 @@
                   thickness: 0.5
                 });
                 console.log(`[V6] 應用玻璃到: ${child.name}`);
+              }
+              // 電視 - 完全不透明
+              else if (matName.includes('tv') || objName.includes('tv')) {
+                const isScreen = matName.includes('screen') || objName.includes('screen');
+                child.material = new THREE.MeshStandardMaterial({
+                  color: isScreen ? 0x0a0a0a : 0x050505,
+                  roughness: isScreen ? 0.02 : 0.15,
+                  metalness: isScreen ? 0.0 : 0.7,
+                  transparent: false,
+                  opacity: 1.0,
+                  emissive: isScreen ? 0x1a2430 : 0x000000,
+                  emissiveIntensity: isScreen ? 0.5 : 0.0
+                });
+                console.log(`[V6] 應用電視到: ${child.name} (screen: ${isScreen})`);
               }
               // 牆壁 - 淺灰色不透明
               else if (matName.includes('wall') || objName.includes('wall')) {
