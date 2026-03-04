@@ -81,89 +81,89 @@ def add_bevel(obj, segments=4, width=0.02):
 # ========== 桌面物件函數 ==========
 
 def create_coffee_cup(x, y, z):
-    """創建咖啡杯"""
+    """創建咖啡杯（放大 5 倍）"""
     # 杯身
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=0.08)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.175, depth=0.4)
     cup = bpy.context.active_object
-    cup.location = (x, y, z + 0.04)
+    cup.location = (x, y, z + 0.2)
     cup.data.materials.append(mat_coffee_cup)
-    add_bevel(cup, segments=3, width=0.005)
+    add_bevel(cup, segments=3, width=0.025)
     
     # 咖啡液面
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.032, depth=0.01)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.16, depth=0.05)
     coffee = bpy.context.active_object
-    coffee.location = (x, y, z + 0.075)
+    coffee.location = (x, y, z + 0.375)
     coffee.data.materials.append(mat_coffee)
     
     # 杯柄（簡化版：用曲線）
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.003, depth=0.05)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.25)
     handle = bpy.context.active_object
-    handle.location = (x + 0.04, y, z + 0.045)
+    handle.location = (x + 0.2, y, z + 0.225)
     handle.rotation_euler = (0, 0, math.pi/2)
     handle.data.materials.append(mat_coffee_cup)
 
 def create_book_stack(x, y, z, count=3):
-    """創建書本堆疊"""
+    """創建書本堆疊（放大 5 倍）"""
     colors = [mat_book_blue, mat_book_red, mat_book_blue]
     for i in range(count):
         angle = (i * 0.1) - 0.1  # 微微傾斜
         bpy.ops.mesh.primitive_cube_add(size=1)
         book = bpy.context.active_object
-        book.scale = (0.12, 0.08, 0.015)
-        book.location = (x, y, z + 0.015 + i * 0.017)
+        book.scale = (0.6, 0.4, 0.075)
+        book.location = (x, y, z + 0.075 + i * 0.085)
         book.rotation_euler = (0, 0, angle)
         book.data.materials.append(colors[i % len(colors)])
-        add_bevel(book, segments=2, width=0.003)
+        add_bevel(book, segments=2, width=0.01)
 
 def create_pen_holder(x, y, z):
-    """創建筆筒"""
+    """創建筆筒（放大 5 倍）"""
     # 筒身
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=0.08)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.175, depth=0.4)
     holder = bpy.context.active_object
-    holder.location = (x, y, z + 0.04)
+    holder.location = (x, y, z + 0.2)
     holder.data.materials.append(mat_pen_holder)
-    add_bevel(holder, segments=3, width=0.005)
+    add_bevel(holder, segments=3, width=0.025)
     
     # 筆（3支）
     for i in range(3):
         angle = i * math.pi / 3
-        bpy.ops.mesh.primitive_cylinder_add(radius=0.004, depth=0.12)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.6)
         pen = bpy.context.active_object
-        pen.location = (x + math.cos(angle) * 0.015, y + math.sin(angle) * 0.015, z + 0.08)
+        pen.location = (x + math.cos(angle) * 0.075, y + math.sin(angle) * 0.075, z + 0.4)
         pen.rotation_euler = (0.2 + i * 0.1, 0, angle)
         pen.data.materials.append(mat_pen)
 
 def create_papers(x, y, z, count=5):
-    """創建文件堆"""
+    """創建文件堆（放大 5 倍）"""
     for i in range(count):
         bpy.ops.mesh.primitive_cube_add(size=1)
         paper = bpy.context.active_object
-        paper.scale = (0.1, 0.13, 0.002)
+        paper.scale = (0.5, 0.65, 0.01)
         # 微微偏移
-        offset_x = i * 0.002
-        offset_y = i * 0.001
+        offset_x = i * 0.01
+        offset_y = i * 0.005
         offset_rot = i * 0.02
-        paper.location = (x + offset_x, y + offset_y, z + 0.002 + i * 0.0025)
+        paper.location = (x + offset_x, y + offset_y, z + 0.01 + i * 0.0125)
         paper.rotation_euler = (0, 0, offset_rot)
         paper.data.materials.append(mat_paper)
 
 def create_keyboard_detailed(x, y, z, rot=0):
-    """創建帶按鍵的鍵盤"""
-    # 鍵盤底座
+    """創建帶按鍵的鍵盤（放大測試版）"""
+    # 鍵盤底座 - 放大 5 倍
     bpy.ops.mesh.primitive_cube_add(size=1)
     kb = bpy.context.active_object
-    kb.scale = (0.32, 0.1, 0.012)
+    kb.scale = (1.6, 0.5, 0.06)
     kb.location = (x, y, z)
     kb.rotation_euler = (0, 0, rot)
     kb.data.materials.append(mat_plastic)
-    add_bevel(kb, segments=3, width=0.01)
+    add_bevel(kb, segments=3, width=0.05)
     
-    # 按鍵（簡化版）
+    # 按鍵（放大 5 倍）
     for row in range(4):
         for col in range(10):
-            kx = x + (col - 4.5) * 0.028
-            ky = y + (row - 1.5) * 0.018
-            kz = z + 0.015
+            kx = x + (col - 4.5) * 0.14
+            ky = y + (row - 1.5) * 0.09
+            kz = z + 0.075
             
             # 旋轉座標
             rx = kx * math.cos(rot) - ky * math.sin(rot)
@@ -171,28 +171,28 @@ def create_keyboard_detailed(x, y, z, rot=0):
             
             bpy.ops.mesh.primitive_cube_add(size=1)
             key = bpy.context.active_object
-            key.scale = (0.012, 0.012, 0.006)
+            key.scale = (0.06, 0.06, 0.03)
             key.location = (rx, ry, kz)
             key.rotation_euler = (0, 0, rot)
-            key.data.materials.append(mat_plastic)
-            add_bevel(key, segments=2, width=0.002)
+            key.data.materials.append(mat_metal)  # 改成金屬色（黑色）
+            add_bevel(key, segments=2, width=0.01)
 
 def create_mouse_detailed(x, y, z, rot=0):
-    """創建模擬滑鼠"""
+    """創建模擬滑鼠（放大 5 倍）"""
     bpy.ops.mesh.primitive_cube_add(size=1)
     mouse = bpy.context.active_object
-    mouse.scale = (0.05, 0.08, 0.018)
+    mouse.scale = (0.25, 0.4, 0.09)
     mouse.location = (x, y, z)
     mouse.rotation_euler = (0, 0, rot)
-    mouse.data.materials.append(mat_plastic)
-    add_bevel(mouse, segments=4, width=0.015)
+    mouse.data.materials.append(mat_metal)  # 改成金屬色（黑色）
+    add_bevel(mouse, segments=4, width=0.075)
     
     # 滾輪
-    mx = x - 0.02 * math.sin(rot)
-    my = y + 0.02 * math.cos(rot)
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.006, depth=0.012)
+    mx = x - 0.1 * math.sin(rot)
+    my = y + 0.1 * math.cos(rot)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.06)
     wheel = bpy.context.active_object
-    wheel.location = (mx, my, z + 0.02)
+    wheel.location = (mx, my, z + 0.1)
     wheel.rotation_euler = (math.pi/2, 0, rot)
     wheel.data.materials.append(mat_metal)
 
@@ -420,15 +420,15 @@ def create_workstation_detailed(x, y, facing='north', index=1):
         s.data.materials.append(mat_screen)
         add_bevel(s, segments=2, width=0.005)
 
-    # 鍵盤位置
+    # 鍵盤位置（桌面頂面 z=0.761，鍵盤厚度 0.02，中心 z=0.77）
     kx = x - 0.3 * math.sin(rot)
     ky = y + 0.3 * math.cos(rot)
-    create_keyboard_detailed(kx, ky, 0.43, rot)
+    create_keyboard_detailed(kx, ky, 0.77, rot)
     
-    # 滑鼠位置
+    # 滑鼠位置（桌面頂面 z=0.761）
     mx = kx + 0.2 * math.cos(rot)
     my = ky + 0.2 * math.sin(rot)
-    create_mouse_detailed(mx, my, 0.43, rot)
+    create_mouse_detailed(mx, my, 0.77, rot)
 
     # 桌面物件（根據工作站位置變化）
     obj_offset_x = 0.4 * math.cos(rot) + 0.2 * math.sin(rot)

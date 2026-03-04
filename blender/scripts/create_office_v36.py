@@ -200,10 +200,98 @@ def create_printer(x, y, z, rot=0):
     tray.rotation_euler = (0, 0, rot)
     tray.data.materials.append(mat_printer)
 
-# ========== 玻璃隔間牆 ==========
+# ========== 玻璃隔間牆（含門）==========
+def create_glass_partition_with_door(x, y, w, d, h, door_pos='center', door_w=1.0, name="GlassPartition"):
+    """創建玻璃隔間牆（含門洞）
+    door_pos: 'left', 'center', 'right'
+    """
+    door_h = 2.0  # 門高度
+    door_offset = {'left': -w/2 + door_w/2 + 0.1, 
+                   'center': 0, 
+                   'right': w/2 - door_w/2 - 0.1}
+    
+    # 判斷是橫向還是縱向牆
+    is_horizontal = w > d
+    
+    if is_horizontal:
+        # 橫向牆（分隔上下區域）
+        # 左側玻璃
+        left_w = (w - door_w) / 2 - 0.05
+        if left_w > 0:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            glass = bpy.context.active_object
+            glass.scale = (left_w, d, h)
+            glass.location = (x - door_w/2 - left_w/2 - 0.05, y, h/2)
+            glass.data.materials.append(mat_glass)
+            glass.name = f"{name}_Left"
+        
+        # 右側玻璃
+        right_w = (w - door_w) / 2 - 0.05
+        if right_w > 0:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            glass = bpy.context.active_object
+            glass.scale = (right_w, d, h)
+            glass.location = (x + door_w/2 + right_w/2 + 0.05, y, h/2)
+            glass.data.materials.append(mat_glass)
+            glass.name = f"{name}_Right"
+        
+        # 門上方玻璃（如果牆比門高）
+        if h > door_h:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            top = bpy.context.active_object
+            top.scale = (door_w, d, h - door_h)
+            top.location = (x, y, door_h + (h - door_h)/2)
+            top.data.materials.append(mat_glass)
+            top.name = f"{name}_Top"
+        
+        # 門框
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        frame = bpy.context.active_object
+        frame.scale = (door_w + 0.1, 0.08, 0.05)
+        frame.location = (x, y, h)
+        frame.data.materials.append(mat_glass_frame)
+        frame.name = f"{name}_DoorFrame"
+        
+    else:
+        # 縱向牆（分隔左右區域）
+        # 上側玻璃
+        top_d = (d - door_w) / 2 - 0.05
+        if top_d > 0:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            glass = bpy.context.active_object
+            glass.scale = (w, top_d, h)
+            glass.location = (x, y + door_w/2 + top_d/2 + 0.05, h/2)
+            glass.data.materials.append(mat_glass)
+            glass.name = f"{name}_Top"
+        
+        # 下側玻璃
+        bot_d = (d - door_w) / 2 - 0.05
+        if bot_d > 0:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            glass = bpy.context.active_object
+            glass.scale = (w, bot_d, h)
+            glass.location = (x, y - door_w/2 - bot_d/2 - 0.05, h/2)
+            glass.data.materials.append(mat_glass)
+            glass.name = f"{name}_Bot"
+        
+        # 門上方玻璃
+        if h > door_h:
+            bpy.ops.mesh.primitive_cube_add(size=1)
+            top = bpy.context.active_object
+            top.scale = (w, door_w, h - door_h)
+            top.location = (x, y, door_h + (h - door_h)/2)
+            top.data.materials.append(mat_glass)
+            top.name = f"{name}_TopGlass"
+        
+        # 門框
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        frame = bpy.context.active_object
+        frame.scale = (0.08, door_w + 0.1, 0.05)
+        frame.location = (x, y, h)
+        frame.data.materials.append(mat_glass_frame)
+
 def create_glass_partition(x, y, w, d, h=1.8, name="GlassPartition"):
-    """創建玻璃隔間牆（含金屬框架）"""
-    # 玻璃面板
+    """創建玻璃隔間牆（無門）"""
     bpy.ops.mesh.primitive_cube_add(size=1)
     glass = bpy.context.active_object
     glass.scale = (w, d, h)
@@ -218,7 +306,6 @@ def create_glass_partition(x, y, w, d, h=1.8, name="GlassPartition"):
         frame.scale = (w + 0.05, 0.05, 0.05)
         frame.location = (x, y, h)
         frame.data.materials.append(mat_glass_frame)
-        frame.name = f"{name}_FrameTop"
     else:
         bpy.ops.mesh.primitive_cube_add(size=1)
         frame = bpy.context.active_object
@@ -329,17 +416,17 @@ w.location = (ROOM_W/2, 0, WALL_H/2)
 w.data.materials.append(mat_wall)
 w.name = "Wall_East"
 
-# ========== 內部玻璃隔間 ==========
+# ========== 內部玻璃隔間（含門）==========
 # 分區說明：
 # - 北區：5個工作站（工作區）
 # - 南區：會議區 + 休息區
-# - 用玻璃牆分隔
+# - 用玻璃牆分隔，門開在中央
 
-# 橫向玻璃隔間（分隔工作區和其他區域）
-create_glass_partition(0, 1.5, ROOM_W - 2, 0.02, 1.8, "GlassPartition_Main")
+# 橫向玻璃隔間（分隔工作區和其他區域，門在中央）
+create_glass_partition_with_door(0, 1.5, ROOM_W - 2, 0.02, 1.8, 'center', 1.2, "GlassPartition_Main")
 
-# 會議區玻璃隔間（左側）
-create_glass_partition(-3.5, -4, 0.02, 6, 1.8, "GlassPartition_Meeting")
+# 會議區玻璃隔間（左側縱向，門在下方）
+create_glass_partition_with_door(-3.5, -4, 0.02, 6, 1.8, 'center', 1.0, "GlassPartition_Meeting")
 
 # ========== 工作區（北區）==========
 create_workstation(-5.5, 4, facing='east', index=1)
