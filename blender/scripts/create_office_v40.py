@@ -93,37 +93,32 @@ def create_office_chair(x, y, target_x=None, target_y=None, rot=None, index=""):
     pole.location = (x, y, 0.225)
     pole.data.materials.append(mat_metal)
     
-    # 座墊（稍微向後傾斜 5 度，更舒適）
-    seat_tilt = math.radians(5)  # 座墊向後傾斜 5 度
+    # 座墊（向後傾斜 5 度）
+    # 在椅子局部座標系中，負 X 軸旋轉 = 向後傾斜
+    seat_tilt = math.radians(8)  # 座墊向後傾斜 8 度
     bpy.ops.mesh.primitive_cube_add(size=1)
     seat = bpy.context.active_object
     seat.scale = (0.4, 0.38, 0.08)
-    # 座墊位置需要根據椅子朝向調整傾斜方向
     seat.location = (x, y, 0.47)
-    # 計算座墊的傾斜角度（沿著椅子朝向的垂直軸傾斜）
-    seat_rot_x = seat_tilt * math.sin(rot)  # X 軸傾斜分量
-    seat_rot_y = -seat_tilt * math.cos(rot)  # Y 軸傾斜分量
-    seat.rotation_euler = (seat_rot_x, seat_rot_y, rot)
+    # 先設置 Z 軸旋轉（面向方向），再設置 X 軸傾斜（後傾）
+    seat.rotation_euler = (-seat_tilt, 0, rot)  # 負 X = 向後傾斜
     seat.data.materials.append(mat_seat)
     add_bevel(seat, segments=5, width=0.04)
     seat.name = f"Seat{index}"
     
-    # 椅背（向後傾斜 15 度，與座墊形成 100 度夾角）
-    back_tilt = math.radians(15)  # 椅背向後傾斜 15 度
-    back_offset = 0.20
+    # 椅背（向後傾斜 15 度，與座墊形成 97 度夾角）
+    back_tilt = math.radians(20)  # 椅背向後傾斜 20 度
+    back_offset = 0.18  # 椅背距離椅子中心的偏移
     back_x = x - back_offset * math.cos(rot)
     back_y = y - back_offset * math.sin(rot)
-    back_z = 0.70  # 椅背中心高度
+    back_z = 0.68  # 椅背中心高度
     
     bpy.ops.mesh.primitive_cube_add(size=1)
     back = bpy.context.active_object
-    back.scale = (0.38, 0.06, 0.5)
-    # 椅背位置（稍微向後移，因為傾斜）
+    back.scale = (0.38, 0.06, 0.45)
     back.location = (back_x, back_y, back_z)
-    # 椅背傾斜：沿著椅子朝向的垂直軸向後傾斜
-    back_rot_x = back_tilt * math.sin(rot)  # X 軸傾斜分量
-    back_rot_y = -back_tilt * math.cos(rot)  # Y 軸傾斜分量
-    back.rotation_euler = (back_rot_x, back_rot_y, rot)
+    # 椅背也向後傾斜
+    back.rotation_euler = (-back_tilt, 0, rot)
     back.data.materials.append(mat_seat)
     add_bevel(back, segments=5, width=0.03)
     back.name = f"ChairBack{index}"
