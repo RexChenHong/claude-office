@@ -148,7 +148,7 @@
       const loader = new GLTFLoader();
 
       loader.load(
-        '/blender/exports/office_v52.glb',
+        '/blender/exports/office_v63.glb',
         (gltf) => {
           officeModel = gltf.scene;
           console.log('[V6] 模型載入成功！');
@@ -162,18 +162,27 @@
               const matName = child.material?.name?.toLowerCase() || '';
               const objName = child.name?.toLowerCase() || '';
               
-              // 玻璃隔間 - 半透明
+              // 玻璃隔間 - 半透明（調高可見度）
               if (matName.includes('glass') || objName.includes('glass')) {
                 child.material = new THREE.MeshPhysicalMaterial({
                   color: 0xd8ecf2,
                   transparent: true,
-                  opacity: 0.3,
+                  opacity: 0.6,  // 提高不透明度
                   roughness: 0.1,
                   metalness: 0.0,
-                  transmission: 0.9,
+                  transmission: 0.5,  // 降低透光度
                   thickness: 0.5
                 });
                 console.log(`[V6] 應用玻璃到: ${child.name}`);
+              }
+              // 牆壁 - 淺灰色不透明
+              else if (matName.includes('wall') || objName.includes('wall')) {
+                child.material = new THREE.MeshStandardMaterial({
+                  color: 0xd8d8d8,
+                  roughness: 0.9,
+                  metalness: 0.0
+                });
+                console.log(`[V6] 應用牆壁到: ${child.name}`);
               }
               // 地板 - 應用木紋
               else if (matName.includes('wood') || matName.includes('floor') || child.geometry.type === 'PlaneGeometry') {
