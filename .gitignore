@@ -23,3 +23,24 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Temporary screenshots
+tmp-*.jpg
+tmp-*.png
+
+# Blender experimental exports
+blender/exports/
+blender/*.blend1
+src/ui/public/blender/
+
+# Experimental test pages
+src/ui/public/test-*.html
+src/ui/public/demo-*.html
+src/ui/public/v6-*.html
+src/ui/public/mixamo-test.html
+
+# ActorCore experiments
+src/ui/public/actorcore/
+
+# Large Blender source files
+blender/*.blend
