@@ -559,9 +559,14 @@
       character.mixamoModel.rotation.y = character.model.rotation.y;
       character.mixamoModel.updateMatrixWorld(true);
 
+      // IK only during seated animations (typing/idle), not walking
+      const seatedStates = ['working', 'idle', 'sitting', 'sitting-idle', 'closed'];
+      const isSeated = seatedStates.includes(character.currentState);
+      const useIKNow = character.useIK && isSeated;
+
       // Determine which bones are handled by IK (skip in pair loop)
       const ikHandledBones = new Set();
-      if (character.useIK && character.ikChains) {
+      if (useIKNow && character.ikChains) {
         for (const chain of character.ikChains) {
           ikHandledBones.add(chain.upperArm.tgt.name);
           ikHandledBones.add(chain.forearm.tgt.name);
@@ -574,15 +579,17 @@
         // Skip bones handled by IK
         if (ikHandledBones.has(pair.tgt.name)) continue;
 
-        if (pair.isArm && pair.srcAnimBone && !character.useIK) {
-          // Non-IK characters: Local-space delta retargeting for arms (existing code)
+        if (pair.isArm && pair.srcAnimBone && !useIKNow) {
+          // Delta retargeting for arms (non-IK characters, or IK character walking)
           _deltaQ.copy(pair.srcBindLocalInv).multiply(pair.srcAnimBone.quaternion);
-          if (pair.armDampen < 1.0) {
-            _deltaQ.slerp(_identQ, 1.0 - pair.armDampen);
+          // IK characters have normal proportions → use higher dampening for bigger swing
+          const dampen = character.useIK ? Math.min(pair.armDampen * 2.5, 1.0) : pair.armDampen;
+          if (dampen < 1.0) {
+            _deltaQ.slerp(_identQ, 1.0 - dampen);
           }
           pair.tgt.quaternion.copy(pair.tgtBindLocal).multiply(_deltaQ);
-        } else if (pair.isArm && character.useIK) {
-          // IK character: Clavicle uses world-space delta (safe for alice, 0.1m bone)
+        } else if (pair.isArm && useIKNow) {
+          // IK character seated: Clavicle uses world-space delta (safe for alice, 0.1m bone)
           pair.src.getWorldQuaternion(_worldQ);
           _deltaQ.copy(_worldQ).multiply(pair.srcBindWorldInv);
           _worldQ.copy(_deltaQ).multiply(pair.tgtBindWorld);
@@ -611,8 +618,8 @@
         pair.tgt.updateMatrixWorld(false);
       }
 
-      // === IK Pass: solve arm chains ===
-      if (character.useIK && character.ikChains) {
+      // === IK Pass: solve arm chains (seated only) ===
+      if (useIKNow && character.ikChains) {
         for (const chain of character.ikChains) {
           // Get Mixamo hand world position (this is where the hand SHOULD be)
           chain.hand.src.getWorldPosition(_ikHandTarget);
@@ -631,6 +638,9 @@
           // Compute target in world space (Genshin shoulder + scaled offset)
           chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
           _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
+
+          // Lift hands above keyboard surface (avoid clipping through keys)
+          _ikHandTarget.y += 0.08;
 
           // Solve IK
           solveTwoBoneIK(
