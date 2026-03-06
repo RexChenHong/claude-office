@@ -670,13 +670,17 @@
           chain.hand.tgt.updateMatrix();
           chain.hand.tgt.updateMatrixWorld(false);
 
-          // Fingers: bind-local + 30% local-space typing curl from Mixamo animation
-          // Local delta doesn't fight IK (unlike world delta) — preserves parent-relative rotation
+          // Fingers: remap Mixamo curl axis to Genshin curl axis
+          // Mixamo bones extend along local Y, curl = X rotation
+          // Genshin bones extend along local X, curl = -Z rotation
+          // Direct local-space delta transfer was ROLL (wrong axis) — must remap
           for (const fb of chain.fingerBones) {
             fb.tgt.quaternion.copy(fb.tgtBindLocal);
-            if (fb.srcAnimBone) {
+            if (fb.srcAnimBone && !fb.tgt.name.includes('Nub')) {
               _deltaQ.copy(fb.srcBindLocalInv).multiply(fb.srcAnimBone.quaternion);
-              _deltaQ.slerp(_identQ, 0.15); // 15% toward identity = keep 85% curl + keystroke dynamics
+              // Extract curl angle from Mixamo X component, apply as -Z on Genshin
+              const curlHalf = Math.atan2(_deltaQ.x, _deltaQ.w);
+              _deltaQ.set(0, 0, Math.sin(curlHalf), Math.cos(curlHalf));
               fb.tgt.quaternion.multiply(_deltaQ);
             }
           }
