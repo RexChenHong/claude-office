@@ -818,6 +818,95 @@
       }
     }
 
+    // ========== 每幀碰撞防護（Layer 2，獨立於 NavMesh 路徑規劃） ==========
+    const COLLISION_WALLS = [
+      // 長牆（z=-3），3 個門洞（x=-5.5, 0, 5.5，門寬 1.2m）
+      { x1: -8, z1: -3, x2: -6.1, z2: -3 },
+      { x1: -4.9, z1: -3, x2: -0.6, z2: -3 },
+      { x1: 0.6, z1: -3, x2: 4.9, z2: -3 },
+      { x1: 6.1, z1: -3, x2: 8, z2: -3 },
+      // 短牆/玻璃隔間
+      { x1: -2.5, z1: -3.15, x2: -2.5, z2: -7 },
+      { x1: 2.5, z1: -3.15, x2: 2.5, z2: -7 },
+      // 會議室牆壁
+      { x1: -7.85, z1: 1, x2: -7.85, z2: 6.85 },
+      { x1: -7.85, z1: 6.85, x2: -2, z2: 6.85 },
+      { x1: -7.85, z1: 1, x2: -2, z2: 1 },
+      { x1: -2, z1: 1, x2: -2, z2: 3.4 },
+      { x1: -2, z1: 4.6, x2: -2, z2: 6.85 },
+      // 牢房後牆
+      { x1: 0, z1: 7, x2: 8, z2: 7 },
+      // 牢房左牆
+      { x1: 0, z1: 4, x2: 0, z2: 7 },
+      // 牢房右牆
+      { x1: 8, z1: 4, x2: 8, z2: 7 },
+      // 牢房隔牆（5 間，每間 1.6m）
+      { x1: 1.6, z1: 4, x2: 1.6, z2: 7 },
+      { x1: 3.2, z1: 4, x2: 3.2, z2: 7 },
+      { x1: 4.8, z1: 4, x2: 4.8, z2: 7 },
+      { x1: 6.4, z1: 4, x2: 6.4, z2: 7 },
+      // 牢房北牆（z=4），每間有 0.8m 寬門洞居中
+      { x1: 0, z1: 4, x2: 0.4, z2: 4 },
+      { x1: 1.2, z1: 4, x2: 1.6, z2: 4 },
+      { x1: 1.6, z1: 4, x2: 2.0, z2: 4 },
+      { x1: 2.8, z1: 4, x2: 3.2, z2: 4 },
+      { x1: 3.2, z1: 4, x2: 3.6, z2: 4 },
+      { x1: 4.4, z1: 4, x2: 4.8, z2: 4 },
+      { x1: 4.8, z1: 4, x2: 5.2, z2: 4 },
+      { x1: 6.0, z1: 4, x2: 6.4, z2: 4 },
+      { x1: 6.4, z1: 4, x2: 6.8, z2: 4 },
+      { x1: 7.6, z1: 4, x2: 8.0, z2: 4 },
+    ];
+
+    function pointToSegmentDistance(px, pz, x1, z1, x2, z2) {
+      const dx = x2 - x1, dz = z2 - z1;
+      const lenSq = dx * dx + dz * dz;
+      if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (pz - z1) ** 2);
+      let t = ((px - x1) * dx + (pz - z1) * dz) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const nearX = x1 + t * dx, nearZ = z1 + t * dz;
+      return Math.sqrt((px - nearX) ** 2 + (pz - nearZ) ** 2);
+    }
+
+    function checkCollision(x, z, radius = 0.3) {
+      for (const wall of COLLISION_WALLS) {
+        const dist = pointToSegmentDistance(x, z, wall.x1, wall.z1, wall.x2, wall.z2);
+        if (dist < radius) return true;
+      }
+      return false;
+    }
+
+    function getNearestWallNormal(x, z, radius = 0.3) {
+      let minDist = Infinity;
+      let normalX = 0, normalZ = 0;
+      for (const wall of COLLISION_WALLS) {
+        const dist = pointToSegmentDistance(x, z, wall.x1, wall.z1, wall.x2, wall.z2);
+        if (dist < minDist) {
+          minDist = dist;
+          const wdx = wall.x2 - wall.x1, wdz = wall.z2 - wall.z1;
+          const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
+          if (wlen > 0) {
+            let nx = -wdz / wlen, nz = wdx / wlen;
+            const lenSq = wdx * wdx + wdz * wdz;
+            let t = ((x - wall.x1) * wdx + (z - wall.z1) * wdz) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const nearX = wall.x1 + t * wdx, nearZ = wall.z1 + t * wdz;
+            const toCharX = x - nearX, toCharZ = z - nearZ;
+            if (nx * toCharX + nz * toCharZ < 0) { nx = -nx; nz = -nz; }
+            normalX = nx; normalZ = nz;
+          }
+        }
+      }
+      return { x: normalX, z: normalZ, dist: minDist };
+    }
+
+    function wallSlide(posX, posZ, moveX, moveZ) {
+      const wall = getNearestWallNormal(posX + moveX, posZ + moveZ);
+      if (wall.dist >= 0.3) return { x: moveX, z: moveZ };
+      const dot = moveX * wall.x + moveZ * wall.z;
+      return { x: moveX - dot * wall.x, z: moveZ - dot * wall.z };
+    }
+
     // ========== Three.js 初始化 ==========
     async function initThreeJS() {
       loadingText.textContent = '初始化 3D 場景...';
@@ -979,10 +1068,12 @@
         addBox(0, 1.5, 8, 16, 3, 0.3);      // 北牆
         addBox(-8, 1.5, 0, 0.3, 3, 16);     // 西牆
         addBox(8, 1.5, 0, 0.3, 3, 16);      // 東牆
-        // z=-3 長牆（3 段，留 2 個門洞各 1m 寬）
-        addBox(-5.75, 1.5, -3, 4.5, 3, 0.3);  // 左段 x: -8 ~ -3.5
-        addBox(0, 1.5, -3, 5, 3, 0.3);        // 中段 x: -2.5 ~ 2.5
-        addBox(5.75, 1.5, -3, 4.5, 3, 0.3);   // 右段 x: 3.5 ~ 8
+        // z=-3 長牆（4 段，留 3 個門洞，與 COLLISION_WALLS 對齊）
+        // 門洞: x=-5.5(gap -6.1~-4.9), x=0(gap -0.6~0.6), x=5.5(gap 4.9~6.1)
+        addBox(-7.05, 1.5, -3, 1.9, 3, 0.3);   // 段1: x=-8 ~ -6.1
+        addBox(-2.75, 1.5, -3, 4.3, 3, 0.3);   // 段2: x=-4.9 ~ -0.6
+        addBox(2.75, 1.5, -3, 4.3, 3, 0.3);    // 段3: x=0.6 ~ 4.9
+        addBox(7.05, 1.5, -3, 1.9, 3, 0.3);    // 段4: x=6.1 ~ 8
         // 工位區桌子（粗略障礙，防止角色穿桌）
         addBox(-5.5, 0.5, -5.5, 5, 1, 1.2);   // 左側桌群
         addBox(5.5, 0.5, -5.5, 5, 1, 1.2);    // 右側桌群
@@ -1280,9 +1371,29 @@
           console.log(`[Movement] 角色到達目的地`);
         }
       } else {
-        // Recast 路徑已保證在 NavMesh 上，直接沿路徑移動
-        pos.x += dx * (step / dist);
-        pos.z += dz * (step / dist);
+        // 計算下一步位置，並用碰撞系統防止穿牆
+        const moveX = dx * (step / dist);
+        const moveZ = dz * (step / dist);
+        const newX = pos.x + moveX;
+        const newZ = pos.z + moveZ;
+        if (!checkCollision(newX, newZ)) {
+          pos.x = newX;
+          pos.z = newZ;
+        } else {
+          // 碰到牆：嘗試 wall sliding
+          const slide = wallSlide(pos.x, pos.z, moveX, moveZ);
+          const slideX = pos.x + slide.x;
+          const slideZ = pos.z + slide.z;
+          if (!checkCollision(slideX, slideZ)) {
+            pos.x = slideX;
+            pos.z = slideZ;
+          } else if (!checkCollision(newX, pos.z)) {
+            pos.x = newX; // 只移動 X
+          } else if (!checkCollision(pos.x, newZ)) {
+            pos.z = newZ; // 只移動 Z
+          }
+          // 都碰牆就不動
+        }
       }
     }
 
@@ -1379,12 +1490,14 @@
             const nx = dx / dist;
             const nz = dz / dist;
             if (chars[i].isMoving) {
-              a.x += nx * PUSH_FORCE;
-              a.z += nz * PUSH_FORCE;
+              const newAx = a.x + nx * PUSH_FORCE;
+              const newAz = a.z + nz * PUSH_FORCE;
+              if (!checkCollision(newAx, newAz)) { a.x = newAx; a.z = newAz; }
             }
             if (chars[j].isMoving) {
-              b.x -= nx * PUSH_FORCE;
-              b.z -= nz * PUSH_FORCE;
+              const newBx = b.x - nx * PUSH_FORCE;
+              const newBz = b.z - nz * PUSH_FORCE;
+              if (!checkCollision(newBx, newBz)) { b.x = newBx; b.z = newBz; }
             }
           }
         }
