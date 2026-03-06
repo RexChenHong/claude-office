@@ -670,9 +670,15 @@
           chain.hand.tgt.updateMatrix();
           chain.hand.tgt.updateMatrixWorld(false);
 
-          // Fingers: bind-local so they follow hand direction naturally
+          // Fingers: bind-local + 30% local-space typing curl from Mixamo animation
+          // Local delta doesn't fight IK (unlike world delta) — preserves parent-relative rotation
           for (const fb of chain.fingerBones) {
             fb.tgt.quaternion.copy(fb.tgtBindLocal);
+            if (fb.srcAnimBone) {
+              _deltaQ.copy(fb.srcBindLocalInv).multiply(fb.srcAnimBone.quaternion);
+              _deltaQ.slerp(_identQ, 0.70); // 70% toward identity = keep 30% curl
+              fb.tgt.quaternion.multiply(_deltaQ);
+            }
           }
         }
       }
