@@ -73,7 +73,7 @@
   <div id="status-bar">
     <div>🎮 Mixamo 3D 角色版</div>
     <div id="session-status" style="margin-top: 8px; font-size: 11px;">
-      等待 Session 連接...
+      Demo 模式
     </div>
   </div>
 
@@ -123,11 +123,237 @@
     // 動畫映射
     const ANIMATION_MAP = {
       'working': 'Typing.fbx',
-      'idle': 'Sitting Idle.fbx',
+      'idle': 'Typing.fbx',          // 暫用 Typing 替代（Sitting Idle 有站立問題）
       'open': 'Standing Idle.fbx',
       'walking': 'Walking.fbx',
-      'closed': 'Sitting.fbx'
+      'closed': 'Sitting.fbx',
+      'sitting': 'Sitting.fbx',        // 坐下過渡動畫（播一次）
+      'sitting-idle': 'Sitting Idle.fbx' // 坐著循環
     };
+
+    // ========== 角色模型（原神 Genshin Impact 風格） ==========
+    const CHARACTER_MODELS = [
+      'models/vrm/columbina.glb',
+      'models/vrm/lauma.glb',
+      'models/vrm/zibai.glb',
+      'models/vrm/alice.glb',
+      'models/vrm/flins.glb'
+    ];
+
+    // Mixamo 骨頭名 → Bip001 基礎名（GLB 匯出後空格變底線）
+    const MIXAMO_TO_BIP = {
+      'mixamorigHips': 'Bip001_Pelvis',
+      'mixamorigSpine': 'Bip001_Spine',
+      'mixamorigSpine1': 'Bip001_Spine1',
+      'mixamorigSpine2': 'Bip001_Spine2',
+      'mixamorigNeck': 'Bip001_Neck',
+      'mixamorigHead': 'Bip001_Head',
+      'mixamorigHeadTop_End': 'Bip001_HeadNub',
+      'mixamorigLeftShoulder': 'Bip001_L_Clavicle',
+      'mixamorigLeftArm': 'Bip001_L_UpperArm',
+      'mixamorigLeftForeArm': 'Bip001_L_Forearm',
+      'mixamorigLeftHand': 'Bip001_L_Hand',
+      'mixamorigLeftUpLeg': 'Bip001_L_Thigh',
+      'mixamorigLeftLeg': 'Bip001_L_Calf',
+      'mixamorigLeftFoot': 'Bip001_L_Foot',
+      'mixamorigLeftToeBase': 'Bip001_L_Toe0',
+      'mixamorigLeftToe_End': 'Bip001_L_Toe0Nub',
+      'mixamorigRightShoulder': 'Bip001_R_Clavicle',
+      'mixamorigRightArm': 'Bip001_R_UpperArm',
+      'mixamorigRightForeArm': 'Bip001_R_Forearm',
+      'mixamorigRightHand': 'Bip001_R_Hand',
+      'mixamorigRightUpLeg': 'Bip001_R_Thigh',
+      'mixamorigRightLeg': 'Bip001_R_Calf',
+      'mixamorigRightFoot': 'Bip001_R_Foot',
+      'mixamorigRightToeBase': 'Bip001_R_Toe0',
+      'mixamorigRightToe_End': 'Bip001_R_Toe0Nub',
+      // 左手手指
+      'mixamorigLeftHandThumb1': 'Bip001_L_Finger0',
+      'mixamorigLeftHandThumb2': 'Bip001_L_Finger01',
+      'mixamorigLeftHandThumb3': 'Bip001_L_Finger02',
+      'mixamorigLeftHandThumb4': 'Bip001_L_Finger0Nub',
+      'mixamorigLeftHandIndex1': 'Bip001_L_Finger1',
+      'mixamorigLeftHandIndex2': 'Bip001_L_Finger11',
+      'mixamorigLeftHandIndex3': 'Bip001_L_Finger12',
+      'mixamorigLeftHandIndex4': 'Bip001_L_Finger1Nub',
+      'mixamorigLeftHandMiddle1': 'Bip001_L_Finger2',
+      'mixamorigLeftHandMiddle2': 'Bip001_L_Finger21',
+      'mixamorigLeftHandMiddle3': 'Bip001_L_Finger22',
+      'mixamorigLeftHandMiddle4': 'Bip001_L_Finger2Nub',
+      'mixamorigLeftHandRing1': 'Bip001_L_Finger3',
+      'mixamorigLeftHandRing2': 'Bip001_L_Finger31',
+      'mixamorigLeftHandRing3': 'Bip001_L_Finger32',
+      'mixamorigLeftHandRing4': 'Bip001_L_Finger3Nub',
+      'mixamorigLeftHandPinky1': 'Bip001_L_Finger4',
+      'mixamorigLeftHandPinky2': 'Bip001_L_Finger41',
+      'mixamorigLeftHandPinky3': 'Bip001_L_Finger42',
+      'mixamorigLeftHandPinky4': 'Bip001_L_Finger4Nub',
+      // 右手手指
+      'mixamorigRightHandThumb1': 'Bip001_R_Finger0',
+      'mixamorigRightHandThumb2': 'Bip001_R_Finger01',
+      'mixamorigRightHandThumb3': 'Bip001_R_Finger02',
+      'mixamorigRightHandThumb4': 'Bip001_R_Finger0Nub',
+      'mixamorigRightHandIndex1': 'Bip001_R_Finger1',
+      'mixamorigRightHandIndex2': 'Bip001_R_Finger11',
+      'mixamorigRightHandIndex3': 'Bip001_R_Finger12',
+      'mixamorigRightHandIndex4': 'Bip001_R_Finger1Nub',
+      'mixamorigRightHandMiddle1': 'Bip001_R_Finger2',
+      'mixamorigRightHandMiddle2': 'Bip001_R_Finger21',
+      'mixamorigRightHandMiddle3': 'Bip001_R_Finger22',
+      'mixamorigRightHandMiddle4': 'Bip001_R_Finger2Nub',
+      'mixamorigRightHandRing1': 'Bip001_R_Finger3',
+      'mixamorigRightHandRing2': 'Bip001_R_Finger31',
+      'mixamorigRightHandRing3': 'Bip001_R_Finger32',
+      'mixamorigRightHandRing4': 'Bip001_R_Finger3Nub',
+      'mixamorigRightHandPinky1': 'Bip001_R_Finger4',
+      'mixamorigRightHandPinky2': 'Bip001_R_Finger41',
+      'mixamorigRightHandPinky3': 'Bip001_R_Finger42',
+      'mixamorigRightHandPinky4': 'Bip001_R_Finger4Nub'
+    };
+
+    /**
+     * 從角色骨架建立骨頭查找表。
+     * GLB 中骨頭名有數字後綴（如 "Bip001 Pelvis_04"），
+     * 這裡建立 "Bip001 Pelvis" → "Bip001 Pelvis_04" 的映射。
+     */
+    function buildBoneMap(skeleton) {
+      const map = {};
+      for (const bone of skeleton.bones) {
+        // 去掉末尾的 _數字 後綴
+        const baseName = bone.name.replace(/_\d+$/, '');
+        map[baseName] = bone.name;
+      }
+      return map;
+    }
+
+    /**
+     * 雙模型 Runtime Retargeting：
+     * - 每個原神角色配一個隱藏的 Mixamo 假人
+     * - 動畫在假人上播放（100% 正確）
+     * - 每幀把假人骨頭的「世界旋轉」複製到原神角色骨頭
+     * - 這繞過了所有本地軸/rest pose 的差異問題
+     */
+
+    /**
+     * 建立骨頭配對表 + 儲存 bind pose 世界旋轉。
+     * 必須在兩個模型都 updateMatrixWorld 之後呼叫（bind pose 時）。
+     */
+    function buildBonePairs(mixamoModel, genshinModel, genshinSkeleton, boneMap) {
+      const pairs = [];
+      const srcBones = {};
+      mixamoModel.traverse(b => { if (b.isBone) srcBones[b.name] = b; });
+
+      // 確保世界矩陣是 bind pose 的
+      mixamoModel.updateMatrixWorld(true);
+      genshinModel.updateMatrixWorld(true);
+
+      for (const [mixamoName, bipBase] of Object.entries(MIXAMO_TO_BIP)) {
+        const src = srcBones[mixamoName];
+        const tgtName = boneMap[bipBase];
+        if (!src || !tgtName) continue;
+        // 跳過整條手臂鏈 — 原神模型骨架結構特殊（Clavicle 長度 1.24），
+        // retarget 會導致嚴重變形。手臂保持 bind pose（A-pose）。
+        if (tgtName.includes('Clavicle') || tgtName.includes('UpperArm') ||
+            tgtName.includes('Forearm') || tgtName.includes('Hand') ||
+            tgtName.includes('Finger')) continue;
+        const tgt = genshinSkeleton.bones.find(b => b.name === tgtName);
+        if (!tgt) continue;
+
+        // World-space delta retargeting（原版，對脊椎/腿效果好）
+        const srcBindWorld = new THREE.Quaternion();
+        src.getWorldQuaternion(srcBindWorld);
+        const srcBindWorldInv = srcBindWorld.clone().invert();
+
+        const tgtBindWorld = new THREE.Quaternion();
+        tgt.getWorldQuaternion(tgtBindWorld);
+
+        const tgtBindLocal = tgt.quaternion.clone();
+
+        pairs.push({ src, tgt, srcBindWorldInv, tgtBindWorld, tgtBindLocal });
+      }
+
+      // 按骨頭深度排序（父骨頭先處理），確保子骨頭能讀到正確的父世界矩陣
+      function boneDepth(bone) {
+        let d = 0;
+        let b = bone;
+        while (b.parent) { d++; b = b.parent; }
+        return d;
+      }
+      pairs.sort((a, b) => boneDepth(a.tgt) - boneDepth(b.tgt));
+
+      // 收集頭髮骨頭的 bind pose local quaternion
+      // 頭髮是 Head 的子骨頭，retarget Head 後頭髮會跟著扭曲
+      // 記錄原始 local rotation，每幀重設回去
+      const hairBindPoses = [];
+      if (genshinSkeleton) {
+        for (const bone of genshinSkeleton.bones) {
+          if (bone.name.includes('Hair')) {
+            hairBindPoses.push({ bone, bindLocal: bone.quaternion.clone() });
+          }
+        }
+      }
+
+      return { pairs, hairBindPoses };
+    }
+
+    // 每幀同步骨架姿態（World-Space Delta Retargeting）
+    const _worldQ = new THREE.Quaternion();
+    const _deltaQ = new THREE.Quaternion();
+    const _parentQ = new THREE.Quaternion();
+    const _tmpPos = new THREE.Vector3();
+
+    function syncSkeletonPose(character) {
+      if (!character.bonePairs || character.bonePairs.length === 0) return;
+
+      // 同步 Mixamo 假人位置（XZ 跟隨角色，Y 固定 0）
+      character.mixamoModel.position.set(
+        character.model.position.x, 0, character.model.position.z
+      );
+      character.mixamoModel.rotation.y = character.model.rotation.y;
+      character.mixamoModel.updateMatrixWorld(true);
+
+      for (const pair of character.bonePairs) {
+        // 1. 取得 Mixamo 骨頭當前世界旋轉
+        pair.src.getWorldQuaternion(_worldQ);
+
+        // 2. Delta = 當前世界旋轉 * 逆(bind pose 世界旋轉)
+        _deltaQ.copy(_worldQ).multiply(pair.srcBindWorldInv);
+
+        // 3. 把 delta 套到原神角色的 bind pose 上
+        _worldQ.copy(_deltaQ).multiply(pair.tgtBindWorld);
+
+        // 4. 轉換為 target bone 的本地旋轉
+        if (pair.tgt.parent) {
+          pair.tgt.parent.getWorldQuaternion(_parentQ);
+          _parentQ.invert();
+          pair.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
+        } else {
+          pair.tgt.quaternion.copy(_worldQ);
+        }
+
+        // 5. 增量更新世界矩陣，讓子骨頭能讀到正確的父骨頭旋轉
+        pair.tgt.updateMatrix();
+        pair.tgt.updateMatrixWorld(false);
+      }
+
+      // 重設頭髮骨頭的 local rotation 回 bind pose
+      // Head 被 retarget 旋轉後，頭髮會跟著扭曲，這裡把它還原
+      if (character.hairBindPoses) {
+        for (const hp of character.hairBindPoses) {
+          hp.bone.quaternion.copy(hp.bindLocal);
+          hp.bone.updateMatrix();
+          hp.bone.updateMatrixWorld(false);
+        }
+      }
+
+      // Hips 位置傳遞：把 Mixamo hips 的 Y 偏移量（坐下時下降）傳給角色
+      // 兩模型都已縮放到 1.7m，世界座標直接可比，不需要 scale ratio
+      if (character.hipsPair) {
+        character.hipsPair.src.getWorldPosition(_tmpPos);
+        const deltaY = _tmpPos.y - character.srcHipsBindY;
+        character.model.position.y = deltaY;
+      }
+    }
 
     // ========== 碰撞牆壁定義 ==========
     const COLLISION_WALLS = [
@@ -151,6 +377,27 @@
       { x1: 0, z1: 4, x2: 0, z2: 7 },
       // 牢房右牆
       { x1: 8, z1: 4, x2: 8, z2: 7 },
+      // 牢房隔牆（5 間，每間 1.6m，隔牆從 z=4 到 z=7）
+      { x1: 1.6, z1: 4, x2: 1.6, z2: 7 },
+      { x1: 3.2, z1: 4, x2: 3.2, z2: 7 },
+      { x1: 4.8, z1: 4, x2: 4.8, z2: 7 },
+      { x1: 6.4, z1: 4, x2: 6.4, z2: 7 },
+      // 牢房北牆（z=4），每間有 0.8m 寬門洞居中
+      // Cell 0: x=0~1.6, door: 0.4~1.2
+      { x1: 0, z1: 4, x2: 0.4, z2: 4 },
+      { x1: 1.2, z1: 4, x2: 1.6, z2: 4 },
+      // Cell 1: x=1.6~3.2, door: 2.0~2.8
+      { x1: 1.6, z1: 4, x2: 2.0, z2: 4 },
+      { x1: 2.8, z1: 4, x2: 3.2, z2: 4 },
+      // Cell 2: x=3.2~4.8, door: 3.6~4.4
+      { x1: 3.2, z1: 4, x2: 3.6, z2: 4 },
+      { x1: 4.4, z1: 4, x2: 4.8, z2: 4 },
+      // Cell 3: x=4.8~6.4, door: 5.2~6.0
+      { x1: 4.8, z1: 4, x2: 5.2, z2: 4 },
+      { x1: 6.0, z1: 4, x2: 6.4, z2: 4 },
+      // Cell 4: x=6.4~8.0, door: 6.8~7.6
+      { x1: 6.4, z1: 4, x2: 6.8, z2: 4 },
+      { x1: 7.6, z1: 4, x2: 8.0, z2: 4 },
     ];
 
     function pointToSegmentDistance(px, pz, x1, z1, x2, z2) {
@@ -180,9 +427,10 @@
     ];
 
     // 到達目標後的朝向（rotation.y）
+    // Mixamo 模型預設面向 +z。rotation.y=0 → 面向 +z，rotation.y=PI → 面向 -z
     const FACING = {
-      workstation: Math.PI, // 面向 z+（面向桌子）
-      cell: 0               // 面向 z-（面向外面）
+      workstation: 0,        // 面向 +z（面向桌子，桌子在 z=-5.5 椅子在 z=-6.375）
+      cell: Math.PI          // 面向 -z（面向牢房門/外面，門在北面 z=4）
     };
 
     /**
@@ -213,38 +461,71 @@
      * - 跨牆：根據目標區域選門通過。
      */
     function findPath(from, to) {
-      const fromSide = from.z < WALL_Z ? 'north' : 'south';
+      const path = [];
+
+      // 如果從牢房出發（z > 4），先走到牢房門口
+      let actualFrom = from;
+      if (from.z > 4) {
+        const doorWaypoint = { x: from.x, z: 3.5 }; // 牢房門外南側
+        path.push(doorWaypoint);
+        actualFrom = doorWaypoint;
+      }
+
+      const fromSide = actualFrom.z < WALL_Z ? 'north' : 'south';
       const toSide = to.z < WALL_Z ? 'north' : 'south';
 
       if (fromSide === toSide) {
         // 同側：檢查北側是否跨越玻璃隔間
         if (fromSide === 'north') {
-          const fromSection = getSection(from.x);
+          const fromSection = getSection(actualFrom.x);
           const toSection = getSection(to.x);
           if (fromSection !== toSection) {
             // 需要繞到牆南側再走到對應門
             const fromDoor = getDoorForSection(fromSection);
             const toDoor = getDoorForSection(toSection);
-            return [
+            path.push(
               { x: fromDoor.x, z: WALL_Z + 0.5 },  // 南出門
               { x: toDoor.x, z: WALL_Z + 0.5 },     // 走到目標門
               { x: toDoor.x, z: WALL_Z - 0.5 },     // 北進門
               { x: to.x, z: to.z }
-            ];
+            );
+            return path;
           }
         }
-        return [{ x: to.x, z: to.z }];
+        // 如果目標在工作站區域，繞桌子
+        if (to.z < -5) {
+          path.push(
+            { x: to.x + 1.0, z: actualFrom.z },
+            { x: to.x + 1.0, z: to.z },
+            { x: to.x, z: to.z }
+          );
+        } else {
+          path.push({ x: to.x, z: to.z });
+        }
+        return path;
       }
 
       // 跨牆：根據目標區域選門
       const toSection = getSection(to.x);
       const targetDoor = getDoorForSection(toSection);
 
-      return [
+      path.push(
         { x: targetDoor.x, z: WALL_Z + 0.5 },  // 門南側
-        { x: targetDoor.x, z: WALL_Z - 0.5 },  // 門北側
-        { x: to.x, z: to.z }
-      ];
+        { x: targetDoor.x, z: WALL_Z - 0.5 }   // 門北側
+      );
+
+      // 如果目標在工作站區域（z < -5），繞桌子側面走
+      // 桌子在 z=-5.5，需要從側面繞到椅子（z=-6.375）
+      if (to.z < -5) {
+        path.push(
+          { x: to.x + 1.0, z: WALL_Z - 0.5 },   // 先走到桌子側面 x
+          { x: to.x + 1.0, z: to.z },              // 從側面走到椅子 z
+          { x: to.x, z: to.z }                      // 滑到椅子位置
+        );
+      } else {
+        path.push({ x: to.x, z: to.z });
+      }
+      return path;
     }
 
     // ========== Three.js 初始化 ==========
@@ -257,7 +538,7 @@
       camera = new THREE.PerspectiveCamera(60, 1400 / 800, 0.1, 1000);
       camera.position.set(0, 12, 15);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
       renderer.setSize(1400, 800);
       renderer.shadowMap.enabled = true;
       document.getElementById('container').appendChild(renderer.domElement);
@@ -341,78 +622,145 @@
       console.log('[Three.js] 場景初始化完成');
     }
 
-    // ========== 載入 Mixamo 角色 ==========
+    // ========== 載入原神角色（GLB） ==========
     async function loadCharacterModel(sessionId, index) {
       loadingText.textContent = `載入角色 ${index + 1}/5...`;
 
-      const loader = new FBXLoader();
+      const gltfLoader = new GLTFLoader();
+      const modelPath = CHARACTER_MODELS[index % CHARACTER_MODELS.length];
 
-      // 載入默認動畫（Standing Idle）
-      const model = await loader.loadAsync('/mixamo/Standing Idle.fbx');
+      const gltf = await new Promise((resolve, reject) => {
+        gltfLoader.load('/' + modelPath, resolve, undefined, reject);
+      });
 
-      // 縮放
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const scale = 1.7 / size.y; // 1.7 米高
-      model.scale.setScalar(scale);
+      const model = gltf.scene;
 
-      // 陰影
+      // 1. 提取骨架並建立骨頭映射
+      let skeleton = null;
       model.traverse(child => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
+        if (child.isSkinnedMesh && child.skeleton && !skeleton) {
+          skeleton = child.skeleton;
         }
       });
+      const boneMap = skeleton ? buildBoneMap(skeleton) : {};
+
+      // 2. 縮放到 1.7m — 用身體骨頭（頭→腳）計算
+      model.updateMatrixWorld(true);
+      let headY = null, footY = null;
+      if (skeleton) {
+        for (const bone of skeleton.bones) {
+          const base = bone.name.replace(/_\d+$/, '');
+          const wy = bone.matrixWorld.elements[13];
+          if (base === 'Bip001_Head') headY = wy;
+          if (base === 'Bip001_L_Foot' && footY === null) footY = wy;
+        }
+      }
+      let bodyHeight = (headY !== null && footY !== null) ? (headY - footY) : 0;
+      if (bodyHeight <= 0) {
+        const box = new THREE.Box3().setFromObject(model);
+        bodyHeight = box.getSize(new THREE.Vector3()).y;
+      }
+      const charScale = 1.7 / (bodyHeight / 0.88);
+      model.scale.setScalar(charScale);
+
+      // 3. 陰影 + 雙面渲染 + 隱藏特效 mesh
+      model.traverse(child => {
+        if (child.isMesh) {
+          const name = child.name.toLowerCase();
+          if (name.includes('eff') || name.includes('effect') || name.includes('hit')) {
+            child.visible = false;
+          } else {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+              child.material.side = THREE.DoubleSide;
+            }
+          }
+        }
+      });
+
+      // 4. 載入隱藏的 Mixamo 假人（動畫在這上面播放）
+      const fbxLoader = new FBXLoader();
+      const mixamoModel = await fbxLoader.loadAsync('/mixamo/Standing Idle.fbx');
+      const mixamoBox = new THREE.Box3().setFromObject(mixamoModel);
+      const mixamoHeight = mixamoBox.getSize(new THREE.Vector3()).y;
+      const mixamoScale = 1.7 / mixamoHeight;
+      mixamoModel.scale.setScalar(mixamoScale);
+      mixamoModel.visible = false; // 隱藏假人
+      scene.add(mixamoModel);
+
+      // 5. 建立骨頭配對表 + bind pose（Mixamo → Genshin）
+      const retargetResult = skeleton ? buildBonePairs(mixamoModel, model, skeleton, boneMap) : { pairs: [], hairBindPoses: [] };
+      const bonePairs = retargetResult.pairs;
+      const hairBindPoses = retargetResult.hairBindPoses;
 
       // 初始位置：牢房
       const cellPos = CELLS[index];
       model.position.set(cellPos.x, 0, cellPos.z);
       model.rotation.y = cellPos.rot;
+      mixamoModel.position.copy(model.position);
+      mixamoModel.rotation.y = model.rotation.y;
 
       scene.add(model);
 
-      // 創建角色對象
+      // Mixer 在 Mixamo 假人上（動畫只驅動假人骨頭）
+      const mixer = new THREE.AnimationMixer(mixamoModel);
+
+      // 播放假人的初始動畫
+      if (mixamoModel.animations.length > 0) {
+        mixamoModel.animations[0].name = 'initial-standing';
+        const action = mixer.clipAction(mixamoModel.animations[0]);
+        action.play();
+      }
+
+      // 找到 hips 配對 + 記錄 bind pose Y 位置
+      const hipsPair = bonePairs.find(p => p.src.name === 'mixamorigHips') || null;
+      let srcHipsBindY = 0;
+      if (hipsPair) {
+        const tmpV = new THREE.Vector3();
+        hipsPair.src.getWorldPosition(tmpV);
+        srcHipsBindY = tmpV.y;
+      }
+
       const character = {
         model: model,
-        mixer: new THREE.AnimationMixer(model),
+        mixamoModel: mixamoModel,
+        mixer: mixer,
+        skeleton: skeleton,
+        boneMap: boneMap,
+        bonePairs: bonePairs,
+        hairBindPoses: hairBindPoses,
+        hipsPair: hipsPair,
+        srcHipsBindY: srcHipsBindY,
         currentAction: null,
         currentPosition: 'cell',
         currentState: 'idle',
         animations: {},
-        // 行走移動系統
-        path: [],           // [{x, z}, ...] 路徑點列表
-        pathIndex: 0,       // 當前目標路徑點索引
+        path: [],
+        pathIndex: 0,
         isMoving: false,
-        moveSpeed: 2.0,     // 單位/秒
-        targetAnimation: null, // 到達後播放的動畫名
-        targetRotation: 0     // 到達後的朝向
+        moveSpeed: 2.0,
+        targetAnimation: null,
+        targetRotation: 0
       };
 
-      // 播放初始動畫
-      if (model.animations.length > 0) {
-        const action = character.mixer.clipAction(model.animations[0]);
-        action.play();
-        character.currentAction = action;
-        character.animations['idle'] = model.animations[0];
-      }
-
       characters.set(sessionId, character);
-      console.log(`[Character] 角色 ${sessionId} 載入完成`);
+      console.log(`[Character] 角色 ${sessionId} (${modelPath}) 載入完成, 骨頭配對: ${bonePairs.length}, 頭髮骨頭: ${hairBindPoses.length}`);
 
       return character;
     }
 
     // ========== 切換動畫 ==========
-    async function switchAnimation(character, animationName) {
+    async function switchAnimation(character, animationName, options = {}) {
       const animFile = ANIMATION_MAP[animationName];
       if (!animFile) return;
 
-      // 載入動畫（如果還沒載入）
+      // 動畫直接在 Mixamo 假人上播放（不需要 retarget）
       if (!character.animations[animationName]) {
         const loader = new FBXLoader();
         const animModel = await loader.loadAsync(`/mixamo/${animFile}`);
-
         if (animModel.animations.length > 0) {
+          animModel.animations[0].name = animationName;
           character.animations[animationName] = animModel.animations[0];
         }
       }
@@ -420,24 +768,29 @@
       const clip = character.animations[animationName];
       if (!clip) return;
 
-      // 平滑切換
+      const seatedAnims = ['idle', 'sitting-idle', 'closed', 'working', 'sitting'];
+
       if (character.currentAction) {
-        character.currentAction.fadeOut(0.3);
+        character.currentAction.stop();
       }
+      character.mixer.stopAllAction();
 
       const action = character.mixer.clipAction(clip);
-      action.reset().fadeIn(0.3).play();
+      action.reset().fadeIn(0.3);
+
+      if (options.loopOnce) {
+        action.setLoop(THREE.LoopOnce);
+        action.clampWhenFinished = true;
+      }
+
+      action.play();
       character.currentAction = action;
       character.currentState = animationName;
 
-      // 坐姿高度調整 -- 必須在動畫實際切換後（await 之後）
-      if (animationName === 'idle' || animationName === 'closed' || animationName === 'working') {
-        character.model.position.y = 0.45; // 椅子座面高度
-      } else {
-        character.model.position.y = 0; // 站立
-      }
+      // 坐姿高度由 syncSkeletonPose 中的 hips 位置傳遞自動處理
+      // 不需要硬編碼偏移值
 
-      console.log('[Animation] 切換到: ' + animationName + ', y=' + character.model.position.y);
+      console.log('[Animation] 切換到: ' + animationName);
     }
 
     // ========== 移動角色 ==========
@@ -514,7 +867,7 @@
           character.pathIndex = 0;
           character.model.rotation.y = character.targetRotation;
 
-          // 切換到目標動畫（由 updateCharacterStates 中設定）
+          // 到達後直接切換到目標動畫（crossfade 0.5s 處理過渡）
           if (character.targetAnimation) {
             switchAnimation(character, character.targetAnimation);
             character.targetAnimation = null;
@@ -630,17 +983,10 @@
         // 開始移動（moveCharacterTo 會判斷是否需要移動）
         moveCharacterTo(character, targetType, index);
 
-        // 如果不需要移動（已在目標位置），直接切動畫並確保坐姿
+        // 如果不需要移動（已在目標位置），直接切動畫
         if (!character.isMoving) {
           if (character.currentState !== targetAnim) {
             switchAnimation(character, targetAnim);
-          } else {
-            // 即使動畫相同，也強制確保 y 座標正確（防止漏設）
-            if (targetAnim === 'idle' || targetAnim === 'closed' || targetAnim === 'working') {
-              character.model.position.y = 0.45;
-            } else {
-              character.model.position.y = 0;
-            }
           }
           character.targetAnimation = null;
         }
@@ -659,23 +1005,56 @@
 
       const delta = clock.getDelta();
 
-      // 更新所有角色的移動和動畫
+      // 更新所有角色的移動、動畫、骨架同步
       characters.forEach(character => {
         updateCharacterMovement(character, delta);
         if (character.mixer) {
           character.mixer.update(delta);
         }
+        // 每幀把 Mixamo 假人的骨頭姿態複製到原神角色
+        syncSkeletonPose(character);
       });
 
       controls.update();
       renderer.render(scene, camera);
     }
 
+    // ========== Demo Mode ==========
+    const DEMO_AGENTS = ['cto', 'lead-engineer', 'risk-officer', 'qa-engineer', 'ml-engineer'];
+
+    async function startDemoMode() {
+      loadingText.textContent = '載入 Demo 角色...';
+
+      // 創建 5 個角色放在牢房
+      for (let i = 0; i < 5; i++) {
+        await loadCharacterModel(`demo-${DEMO_AGENTS[i]}`, i);
+      }
+
+      loadingText.textContent = 'Demo 準備就緒';
+      updateSessionStatus(`Demo 模式 — ${DEMO_AGENTS.length} 個角色`);
+
+      // 等 2 秒後，5 個角色分別走向工作站
+      setTimeout(() => {
+        for (let i = 0; i < 5; i++) {
+          const character = characters.get(`demo-${DEMO_AGENTS[i]}`);
+          if (!character) continue;
+
+          // 設定到達工作站後播放的動畫
+          const anims = ['working', 'idle', 'working', 'working', 'idle'];
+          character.targetAnimation = anims[i] || 'idle';
+          moveCharacterTo(character, 'workstation', i);
+        }
+        console.log('[Demo] 角色開始走向工作站');
+      }, 2000);
+    }
+
     // ========== 主程式 ==========
     async function main() {
       try {
         await initThreeJS();
-        connectWebSocket();
+
+        // Demo 模式：自動創建角色並演示
+        await startDemoMode();
 
         window.addEventListener('resize', () => {
           camera.aspect = 1400 / 800;
@@ -690,8 +1069,15 @@
         window.camera = camera;
         window.controls = controls;
         window.scene = scene;
+        window.characters = characters;
 
-        console.log('[V7-Mixamo] 系統啟動完成！');
+        // WebSocket 連接改為手動啟用（console 指令）
+        window.connectLive = () => {
+          console.log('[WS] 手動連接 Session Monitor...');
+          connectWebSocket();
+        };
+        console.log('[V7-Mixamo] Demo 模式啟動完成！');
+        console.log('[V7-Mixamo] 輸入 connectLive() 可連接 Session Monitor');
       } catch (error) {
         console.error('[V7-Mixamo] 啟動失敗:', error);
         loadingText.textContent = `錯誤: ${error.message}`;
