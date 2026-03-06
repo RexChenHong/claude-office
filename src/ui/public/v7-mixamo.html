@@ -974,24 +974,43 @@
         }
         console.log(`[Three.js] 前移了 ${chairGroups.length} 張工作站椅子 (${CHAIR_Z_OFFSET}m)`);
 
-        // 前移所有桌上鍵盤，縮小鍵盤與螢幕間空隙
-        const KEYBOARD_Z_OFFSET = 0.03;
+        // 調整鍵盤：前移 + 整體加寬（包含基座，配合 Mixamo 打字動畫幅度）
+        const KEYBOARD_Z_OFFSET = 0.07;
+        const KEYBOARD_WIDTH_SCALE = 1.6; // Z方向（前後寬度）
         let kbCount = 0;
         for (let i = 1; i <= 5; i++) {
           let desk = null;
           officeModel.traverse(obj => { if (obj.name === `Desk_${i}_Parent`) desk = obj; });
           if (!desk) continue;
+          // Collect all keyboard parts (keys y≈0.81, base y≈0.79)
+          const kbParts = [];
           desk.children.forEach(child => {
             if (!child.isMesh) return;
             const ly = child.position.y;
-            // Keyboard keys (y≈0.81) and base (y≈0.79)
-            if (ly > 0.78 && ly < 0.82 && child.position.z < -0.15 && child.position.z > -0.35) {
-              child.position.z += KEYBOARD_Z_OFFSET;
-              kbCount++;
+            if (ly > 0.77 && ly < 0.83 && child.position.z < -0.12 && child.position.z > -0.38) {
+              kbParts.push(child);
             }
           });
+          if (kbParts.length === 0) continue;
+          // Wrap in a group, scale the group uniformly
+          const kbGroup = new THREE.Group();
+          // Calculate center of keyboard
+          let sumX = 0, sumZ = 0;
+          for (const p of kbParts) { sumX += p.position.x; sumZ += p.position.z; }
+          const cx = sumX / kbParts.length;
+          const cz = sumZ / kbParts.length;
+          kbGroup.position.set(cx, 0, cz + KEYBOARD_Z_OFFSET);
+          desk.add(kbGroup);
+          for (const p of kbParts) {
+            const origX = p.position.x, origY = p.position.y, origZ = p.position.z;
+            desk.remove(p);
+            p.position.set(origX - cx, origY, origZ - cz);
+            kbGroup.add(p);
+          }
+          kbGroup.scale.z = KEYBOARD_WIDTH_SCALE;
+          kbCount += kbParts.length;
         }
-        console.log(`[Three.js] 前移了 ${kbCount} 個鍵盤物件 (${KEYBOARD_Z_OFFSET}m)`);
+        console.log(`[Three.js] 調整了 ${kbCount} 個鍵盤物件 (z+${KEYBOARD_Z_OFFSET}m, 寬度z×${KEYBOARD_WIDTH_SCALE})`);
       } catch (err) {
         console.error('[Three.js] 辦公室模型載入失敗:', err);
       }
