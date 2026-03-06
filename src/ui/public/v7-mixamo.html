@@ -639,8 +639,9 @@
           chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
           _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
 
-          // Lift hands above keyboard surface (fingers extend ~0.1m below wrist bone)
-          _ikHandTarget.y += 0.15;
+          // Offset IK target: lift wrist slightly, pull back toward keyboard center
+          _ikHandTarget.y += 0.12;
+          _ikHandTarget.z -= 0.06;
 
           // Solve IK
           solveTwoBoneIK(
@@ -655,9 +656,10 @@
             chain.bindForeDir
           );
 
-          // Hand: copy Mixamo hand rotation (world-space delta, same as body)
+          // Hand: copy Mixamo hand rotation with 25% dampening for natural wrist angle
           chain.hand.src.getWorldQuaternion(_worldQ);
           _deltaQ.copy(_worldQ).multiply(chain.hand.srcBindWorldInv);
+          _deltaQ.slerp(_identQ, 0.25); // dampen rotation delta → softer wrist
           _worldQ.copy(_deltaQ).multiply(chain.hand.tgtBindWorld);
           if (chain.hand.tgt.parent) {
             chain.hand.tgt.parent.getWorldQuaternion(_parentQ);
@@ -957,6 +959,25 @@
           chair.position.z += CHAIR_Z_OFFSET;
         }
         console.log(`[Three.js] 前移了 ${chairGroups.length} 張工作站椅子 (${CHAIR_Z_OFFSET}m)`);
+
+        // 前移所有桌上鍵盤，縮小鍵盤與螢幕間空隙
+        const KEYBOARD_Z_OFFSET = 0.03;
+        let kbCount = 0;
+        for (let i = 1; i <= 5; i++) {
+          let desk = null;
+          officeModel.traverse(obj => { if (obj.name === `Desk_${i}_Parent`) desk = obj; });
+          if (!desk) continue;
+          desk.children.forEach(child => {
+            if (!child.isMesh) return;
+            const ly = child.position.y;
+            // Keyboard keys (y≈0.81) and base (y≈0.79)
+            if (ly > 0.78 && ly < 0.82 && child.position.z < -0.15 && child.position.z > -0.35) {
+              child.position.z += KEYBOARD_Z_OFFSET;
+              kbCount++;
+            }
+          });
+        }
+        console.log(`[Three.js] 前移了 ${kbCount} 個鍵盤物件 (${KEYBOARD_Z_OFFSET}m)`);
       } catch (err) {
         console.error('[Three.js] 辦公室模型載入失敗:', err);
       }
