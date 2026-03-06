@@ -845,6 +845,15 @@
       { x1: 3.2, z1: 4, x2: 3.2, z2: 7 },
       { x1: 4.8, z1: 4, x2: 4.8, z2: 7 },
       { x1: 6.4, z1: 4, x2: 6.4, z2: 7 },
+      // 工位桌子（左右兩組，角色不應穿過桌面）
+      // 左側桌群 (x: -8 ~ -3, z≈-5 前沿)
+      { x1: -8, z1: -4.8, x2: -3, z2: -4.8 },    // 桌子前沿
+      { x1: -8, z1: -6.5, x2: -3, z2: -6.5 },    // 桌子後沿
+      { x1: -3, z1: -4.8, x2: -3, z2: -6.5 },    // 桌群右側
+      // 右側桌群 (x: 3 ~ 8, z≈-5 前沿)
+      { x1: 3, z1: -4.8, x2: 8, z2: -4.8 },      // 桌子前沿
+      { x1: 3, z1: -6.5, x2: 8, z2: -6.5 },      // 桌子後沿
+      { x1: 3, z1: -4.8, x2: 3, z2: -6.5 },      // 桌群左側
       // 牢房北牆（z=4），每間有 0.8m 寬門洞居中
       { x1: 0, z1: 4, x2: 0.4, z2: 4 },
       { x1: 1.2, z1: 4, x2: 1.6, z2: 4 },
@@ -1376,9 +1385,11 @@
         const moveZ = dz * (step / dist);
         const newX = pos.x + moveX;
         const newZ = pos.z + moveZ;
+        let moved = false;
         if (!checkCollision(newX, newZ)) {
           pos.x = newX;
           pos.z = newZ;
+          moved = true;
         } else {
           // 碰到牆：嘗試 wall sliding
           const slide = wallSlide(pos.x, pos.z, moveX, moveZ);
@@ -1387,12 +1398,31 @@
           if (!checkCollision(slideX, slideZ)) {
             pos.x = slideX;
             pos.z = slideZ;
+            moved = true;
           } else if (!checkCollision(newX, pos.z)) {
-            pos.x = newX; // 只移動 X
+            pos.x = newX;
+            moved = true;
           } else if (!checkCollision(pos.x, newZ)) {
-            pos.z = newZ; // 只移動 Z
+            pos.z = newZ;
+            moved = true;
           }
-          // 都碰牆就不動
+        }
+
+        if (moved) {
+          character.stuckTimer = 0;
+        } else {
+          // 完全卡住，快速放棄重選 POI
+          character.stuckTimer = (character.stuckTimer || 0) + delta;
+          if (character.stuckTimer > 0.8) {
+            console.log(`[Movement] 角色卡住，放棄路徑`);
+            character.isMoving = false;
+            character.path = [];
+            character.pathIndex = 0;
+            character.stuckTimer = 0;
+            if (character.aiState === 'ROAMING_WALK') {
+              character.aiState = 'ROAMING_CHOOSE';
+            }
+          }
         }
       }
     }
