@@ -1,6 +1,6 @@
 # Claude Office - Task State Tracking
 
-- **Last Updated**: 2026-03-06 23:30
+- **Last Updated**: 2026-03-07 01:30
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Task ID | Type | Result | Title | File |
 |---------|------|--------|-------|------|
+| 20260307-1_FIX_NavMeshPathfinding | FIX | DONE | NavMesh 升級 — recast-navigation-js (Detour A*) + 程式化地板解決斷島問題 | PR #2 (fix/walking-arm-distortion) |
 | 20260306-2_FEAT_CharacterRoamingAI | FEAT | DONE | Character Roaming AI — FSM漫遊+11動畫+Wall Sliding物理碰撞 | PR #2 (fix/walking-arm-distortion) |
 | 20260306-1_FIX_RetargetSkeletonAlignment | FIX | 6/6 DONE | Mixamo Retarget — 全5角色IK完成(GroupB:IK打字, GroupA:bind-pose坐姿) | TASKS/20260306-1_FIX_RetargetSkeletonAlignment.md |
 
@@ -30,7 +31,8 @@
 | Component | Version |
 |-----------|---------|
 | Scene | V64 (監獄風格) |
-| Character System | V7 (Mixamo 3D) + Roaming AI |
+| Character System | V7 (Mixamo 3D) + Roaming AI + Recast NavMesh |
+| Navigation | recast-navigation-js (Detour A*) — 程式化地板+牆壁 NavMesh |
 | Models | 5 GLB (alice, columbina, flins, lauma, zibai) |
 | Animations | 21 FBX (10 original + 11 new roaming) |
 
