@@ -125,15 +125,27 @@
     // 動畫映射
     const ANIMATION_MAP = {
       'working': 'Typing.fbx',
-      'idle': 'Typing.fbx',          // 暫用 Typing 替代（Sitting Idle 有站立問題）
+      'idle': 'Typing.fbx',
       'open': 'Standing Idle.fbx',
       'walking': 'Walking.fbx',
       'closed': 'Sitting.fbx',
-      'sitting': 'Sitting.fbx',        // 坐下過渡動畫（播一次）
-      'sitting-idle': 'Sitting Idle.fbx', // 坐著循環
+      'sitting': 'Sitting.fbx',
+      'sitting-idle': 'Sitting Idle.fbx',
       'standing-idle': 'Standing Idle.fbx',
       'walk-circle': 'Walk In Circle.fbx',
-      'running': 'Running.fbx'
+      'running': 'Running.fbx',
+      // 新增漫遊動畫
+      'arm-stretching': 'Arm Stretching.fbx',
+      'looking': 'Looking.fbx',
+      'looking-behind': 'Looking Behind.fbx',
+      'waving': 'Waving.fbx',
+      'angry': 'Angry.fbx',
+      'defeated': 'Defeated.fbx',
+      'drunk-walk': 'Drunk Walk.fbx',
+      'hip-hop-dancing': 'Hip Hop Dancing.fbx',
+      'rumba-dancing': 'Rumba Dancing.fbx',
+      'sitting-laughing': 'Sitting Laughing.fbx',
+      'batter-on-deck': 'Batter On Deck.fbx'
     };
 
     // Animation pose type for retarget path selection
@@ -141,22 +153,28 @@
       'working': 'sitting', 'idle': 'sitting', 'open': 'standing',
       'walking': 'standing', 'closed': 'sitting', 'sitting': 'sitting',
       'sitting-idle': 'sitting', 'standing-idle': 'standing',
-      'walk-circle': 'standing', 'running': 'standing'
+      'walk-circle': 'standing', 'running': 'standing',
+      'arm-stretching': 'standing', 'looking': 'standing',
+      'looking-behind': 'standing', 'waving': 'standing',
+      'angry': 'standing', 'defeated': 'standing',
+      'drunk-walk': 'standing', 'hip-hop-dancing': 'standing',
+      'rumba-dancing': 'standing', 'sitting-laughing': 'sitting',
+      'batter-on-deck': 'standing'
     };
 
-    const ANIM_LOOP_ONCE = new Set(['sitting']);
+    const ANIM_LOOP_ONCE = new Set(['sitting', 'arm-stretching', 'looking-behind', 'waving', 'angry', 'defeated', 'batter-on-deck']);
 
     // Points of Interest for character roaming
     const POI_TABLE = [
-      { id: 'corridor-w', x: -5, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: 0 },
-      { id: 'corridor-c', x: 0, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: 0 },
-      { id: 'corridor-e', x: 5, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: Math.PI },
-      { id: 'window-w', x: -7, z: 0, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: Math.PI / 2 },
-      { id: 'window-e', x: 7, z: 0, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: -Math.PI / 2 },
-      { id: 'corridor-nw', x: -5, z: 2, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: Math.PI },
-      { id: 'corridor-ne', x: 5, z: 2, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: 0 },
-      { id: 'wander-1', x: -3, z: 1, type: 'standing', anims: ['walk-circle'], duration: [5, 10], facing: 0 },
-      { id: 'wander-2', x: 3, z: 1, type: 'standing', anims: ['walk-circle'], duration: [5, 10], facing: Math.PI },
+      { id: 'corridor-w', x: -5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'looking-behind'], duration: [8, 15], facing: 0 },
+      { id: 'corridor-c', x: 0, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'hip-hop-dancing', 'rumba-dancing'], duration: [8, 15], facing: 0 },
+      { id: 'corridor-e', x: 5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking-behind', 'batter-on-deck'], duration: [8, 15], facing: Math.PI },
+      { id: 'window-w', x: -7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'defeated', 'angry'], duration: [10, 20], facing: Math.PI / 2 },
+      { id: 'window-e', x: 7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'looking-behind', 'defeated'], duration: [10, 20], facing: -Math.PI / 2 },
+      { id: 'corridor-nw', x: -5, z: 2, type: 'standing', anims: ['standing-idle', 'looking', 'arm-stretching'], duration: [10, 20], facing: Math.PI },
+      { id: 'corridor-ne', x: 5, z: 2, type: 'standing', anims: ['standing-idle', 'looking-behind', 'arm-stretching'], duration: [10, 20], facing: 0 },
+      { id: 'wander-1', x: -3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: 0 },
+      { id: 'wander-2', x: 3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: Math.PI },
     ];
 
     function initRoamingPOIs() {
@@ -166,21 +184,21 @@
         if (!ws) return;
         POI_TABLE.push({
           id: `own-desk-${i}`, x: ws.x, z: ws.z + 0.5, type: 'sitting',
-          anims: ['sitting-idle'], duration: [10, 20], facing: 0,
+          anims: ['sitting-idle', 'sitting-laughing'], duration: [10, 20], facing: 0,
           ownerOnly: char.workstationIndex
         });
         if (i > 0) {
           const leftWs = WORKSTATIONS[char.workstationIndex - 1];
           if (leftWs) POI_TABLE.push({
             id: `visit-left-${i}`, x: leftWs.x + 0.5, z: leftWs.z + 1.0, type: 'standing',
-            anims: ['standing-idle'], duration: [8, 15], facing: 0
+            anims: ['standing-idle', 'waving'], duration: [8, 15], facing: 0
           });
         }
         if (i < charArray.length - 1) {
           const rightWs = WORKSTATIONS[char.workstationIndex + 1];
           if (rightWs) POI_TABLE.push({
             id: `visit-right-${i}`, x: rightWs.x - 0.5, z: rightWs.z + 1.0, type: 'standing',
-            anims: ['standing-idle'], duration: [8, 15], facing: 0
+            anims: ['standing-idle', 'waving'], duration: [8, 15], facing: 0
           });
         }
       });
