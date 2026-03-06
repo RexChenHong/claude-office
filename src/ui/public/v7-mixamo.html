@@ -583,7 +583,7 @@
           // Delta retargeting for arms (non-IK characters, or IK character walking)
           _deltaQ.copy(pair.srcBindLocalInv).multiply(pair.srcAnimBone.quaternion);
           // IK characters have normal proportions → use higher dampening for bigger swing
-          const dampen = character.useIK ? Math.min(pair.armDampen * 2.5, 1.0) : pair.armDampen;
+          const dampen = character.useIK ? Math.min(pair.armDampen * 4.0, 1.0) : pair.armDampen;
           if (dampen < 1.0) {
             _deltaQ.slerp(_identQ, 1.0 - dampen);
           }
@@ -639,8 +639,8 @@
           chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
           _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
 
-          // Lift hands above keyboard surface (avoid clipping through keys)
-          _ikHandTarget.y += 0.08;
+          // Lift hands above keyboard surface (fingers extend ~0.1m below wrist bone)
+          _ikHandTarget.y += 0.15;
 
           // Solve IK
           solveTwoBoneIK(
