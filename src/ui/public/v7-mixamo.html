@@ -869,6 +869,45 @@
       return false;
     }
 
+    // 找到最近碰撞牆的法線向量（用於 wall sliding）
+    function getNearestWallNormal(x, z, radius = 0.3) {
+      let minDist = Infinity;
+      let normalX = 0, normalZ = 0;
+      for (const wall of COLLISION_WALLS) {
+        const dist = pointToSegmentDistance(x, z, wall.x1, wall.z1, wall.x2, wall.z2);
+        if (dist < minDist) {
+          minDist = dist;
+          // 牆的方向向量
+          const wdx = wall.x2 - wall.x1, wdz = wall.z2 - wall.z1;
+          const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
+          if (wlen > 0) {
+            // 法線 = 垂直於牆面，指向角色側
+            let nx = -wdz / wlen, nz = wdx / wlen;
+            // 確保法線指向角色
+            const lenSq = wdx * wdx + wdz * wdz;
+            let t = ((x - wall.x1) * wdx + (z - wall.z1) * wdz) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const nearX = wall.x1 + t * wdx, nearZ = wall.z1 + t * wdz;
+            const toCharX = x - nearX, toCharZ = z - nearZ;
+            if (nx * toCharX + nz * toCharZ < 0) { nx = -nx; nz = -nz; }
+            normalX = nx; normalZ = nz;
+          }
+        }
+      }
+      return { x: normalX, z: normalZ, dist: minDist };
+    }
+
+    // Wall sliding: 把移動向量投影到牆面切線方向
+    function wallSlide(posX, posZ, moveX, moveZ) {
+      const wall = getNearestWallNormal(posX + moveX, posZ + moveZ);
+      if (wall.dist >= 0.3) return { x: moveX, z: moveZ }; // 沒碰到牆
+      // 切線 = 移動向量減去法線分量
+      const dot = moveX * wall.x + moveZ * wall.z;
+      const slideX = moveX - dot * wall.x;
+      const slideZ = moveZ - dot * wall.z;
+      return { x: slideX, z: slideZ };
+    }
+
     // ========== 牆壁與路徑系統 ==========
     const WALL_Z = -3; // 長牆在 z = -3
     const DOORS = [
@@ -911,15 +950,43 @@
      * - 同側跨區域（北側）：南出當前區域門 → 走到目標區域門 → 北進。
      * - 跨牆：根據目標區域選門通過。
      */
+    // 會議室區域檢測（x: -7.85 ~ -2, z: 1 ~ 6.85，門洞 x=-2, z=3.4~4.6）
+    const MEETING_ROOM = { x1: -7.85, x2: -2, z1: 1, z2: 6.85, doorX: -1.5, doorZ: 4.0 };
+
+    function isInMeetingRoom(x, z) {
+      return x >= MEETING_ROOM.x1 && x <= MEETING_ROOM.x2 &&
+             z >= MEETING_ROOM.z1 && z <= MEETING_ROOM.z2;
+    }
+
     function findPath(from, to) {
       const path = [];
 
       // 如果從牢房出發（z > 4），先走到牢房門口
       let actualFrom = from;
       if (from.z > 4) {
-        const doorWaypoint = { x: from.x, z: 3.5 }; // 牢房門外南側
+        const doorWaypoint = { x: from.x, z: 3.5 };
         path.push(doorWaypoint);
         actualFrom = doorWaypoint;
+      }
+
+      // 會議室路徑處理
+      const fromInMR = isInMeetingRoom(actualFrom.x, actualFrom.z);
+      const toInMR = isInMeetingRoom(to.x, to.z);
+      if (fromInMR && !toInMR) {
+        // 從會議室出去：先走到門口
+        path.push({ x: MEETING_ROOM.doorX, z: MEETING_ROOM.doorZ });
+        actualFrom = { x: MEETING_ROOM.doorX, z: MEETING_ROOM.doorZ };
+      } else if (!fromInMR && toInMR) {
+        // 走進會議室：先到門口再進去
+        // 先完成普通路徑到門口附近，然後進入
+        const tempPath = findPath(actualFrom, { x: MEETING_ROOM.doorX, z: MEETING_ROOM.doorZ });
+        path.push(...tempPath);
+        path.push({ x: to.x, z: to.z });
+        return path;
+      } else if (fromInMR && toInMR) {
+        // 會議室內部直線
+        path.push({ x: to.x, z: to.z });
+        return path;
       }
 
       const fromSide = actualFrom.z < WALL_Z ? 'north' : 'south';
@@ -1388,24 +1455,39 @@
           console.log(`[Movement] 角色到達目的地`);
         }
       } else {
-        // 朝目標移動（碰撞檢查：若新位置會撞牆則嘗試沿軸滑動）
-        const newX = pos.x + dx * (step / dist);
-        const newZ = pos.z + dz * (step / dist);
+        // 朝目標移動，碰撞時沿牆面滑動
+        const moveX = dx * (step / dist);
+        const moveZ = dz * (step / dist);
+        let newX = pos.x + moveX;
+        let newZ = pos.z + moveZ;
         let moved = false;
+
         if (!checkCollision(newX, newZ)) {
+          // 直線無碰撞
           pos.x = newX; pos.z = newZ; moved = true;
-        } else if (!checkCollision(newX, pos.z)) {
-          pos.x = newX; moved = true;
-        } else if (!checkCollision(pos.x, newZ)) {
-          pos.z = newZ; moved = true;
+        } else {
+          // Wall sliding: 沿牆面切線方向滑動
+          const slide = wallSlide(pos.x, pos.z, moveX, moveZ);
+          const slideX = pos.x + slide.x;
+          const slideZ = pos.z + slide.z;
+          const slideMag = Math.sqrt(slide.x * slide.x + slide.z * slide.z);
+          if (slideMag > 0.001 && !checkCollision(slideX, slideZ)) {
+            pos.x = slideX; pos.z = slideZ; moved = true;
+          } else if (!checkCollision(newX, pos.z)) {
+            // Fallback: X-only
+            pos.x = newX; moved = true;
+          } else if (!checkCollision(pos.x, newZ)) {
+            // Fallback: Z-only
+            pos.z = newZ; moved = true;
+          }
         }
 
         if (moved) {
           character.stuckTimer = 0;
         } else {
-          // 完全卡住，累計時間
+          // 完全卡住，快速放棄
           character.stuckTimer = (character.stuckTimer || 0) + delta;
-          if (character.stuckTimer > 2.0) {
+          if (character.stuckTimer > 0.8) {
             console.log(`[Movement] 角色卡住，放棄路徑`);
             character.isMoving = false;
             character.path = [];
