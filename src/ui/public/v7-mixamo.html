@@ -353,6 +353,7 @@
         // Store bind pose local quaternions for axis-agnostic IK
         const upperBindLocal = upperArm.tgt.quaternion.clone();
         const forearmBindLocal = forearm.tgt.quaternion.clone();
+        const handBindLocal = hand.tgt.quaternion.clone();
 
         // Bind direction from forearm to hand (world space)
         // Re-fetch Genshin positions since _p2/_p3 were overwritten by Mixamo measurements
@@ -367,7 +368,7 @@
           srcUpperLen, srcForeLen,
           srcShoulderBindPos, tgtShoulderBindPos,
           elbowDir,
-          upperBindLocal, forearmBindLocal, bindForeDir
+          upperBindLocal, forearmBindLocal, handBindLocal, bindForeDir
         });
 
         console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}`);
@@ -640,7 +641,7 @@
           _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
 
           // Offset IK target: lift wrist slightly, pull back toward keyboard center
-          _ikHandTarget.y += 0.20;
+          _ikHandTarget.y += 0.10;
           _ikHandTarget.z -= 0.06;
 
           // Solve IK
@@ -656,18 +657,9 @@
             chain.bindForeDir
           );
 
-          // Hand: copy Mixamo hand rotation with 25% dampening for natural wrist angle
-          chain.hand.src.getWorldQuaternion(_worldQ);
-          _deltaQ.copy(_worldQ).multiply(chain.hand.srcBindWorldInv);
-          _deltaQ.slerp(_identQ, 0.95); // dampen rotation delta → nearly bind pose wrist
-          _worldQ.copy(_deltaQ).multiply(chain.hand.tgtBindWorld);
-          if (chain.hand.tgt.parent) {
-            chain.hand.tgt.parent.getWorldQuaternion(_parentQ);
-            _parentQ.invert();
-            chain.hand.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
-          } else {
-            chain.hand.tgt.quaternion.copy(_worldQ);
-          }
+          // Hand: keep bind-pose local rotation → hand naturally follows forearm direction
+          // (old approach set world-space rotation which fought the IK forearm angle = 90° wrist bend)
+          chain.hand.tgt.quaternion.copy(chain.handBindLocal);
           chain.hand.tgt.updateMatrix();
           chain.hand.tgt.updateMatrixWorld(false);
         }
