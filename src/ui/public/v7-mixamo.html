@@ -130,8 +130,62 @@
       'walking': 'Walking.fbx',
       'closed': 'Sitting.fbx',
       'sitting': 'Sitting.fbx',        // 坐下過渡動畫（播一次）
-      'sitting-idle': 'Sitting Idle.fbx' // 坐著循環
+      'sitting-idle': 'Sitting Idle.fbx', // 坐著循環
+      'standing-idle': 'Standing Idle.fbx',
+      'walk-circle': 'Walk In Circle.fbx',
+      'running': 'Running.fbx'
     };
+
+    // Animation pose type for retarget path selection
+    const ANIM_POSE_TYPE = {
+      'working': 'sitting', 'idle': 'sitting', 'open': 'standing',
+      'walking': 'standing', 'closed': 'sitting', 'sitting': 'sitting',
+      'sitting-idle': 'sitting', 'standing-idle': 'standing',
+      'walk-circle': 'standing', 'running': 'standing'
+    };
+
+    const ANIM_LOOP_ONCE = new Set(['sitting']);
+
+    // Points of Interest for character roaming
+    const POI_TABLE = [
+      { id: 'corridor-w', x: -5, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: 0 },
+      { id: 'corridor-c', x: 0, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: 0 },
+      { id: 'corridor-e', x: 5, z: 0, type: 'standing', anims: ['standing-idle'], duration: [8, 15], facing: Math.PI },
+      { id: 'window-w', x: -7, z: 0, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: Math.PI / 2 },
+      { id: 'window-e', x: 7, z: 0, type: 'standing', anims: ['standing-idle'], duration: [10, 20], facing: -Math.PI / 2 },
+      { id: 'meeting-1', x: -5, z: 3, type: 'standing', anims: ['standing-idle'], duration: [10, 25], facing: Math.PI },
+      { id: 'meeting-2', x: -4, z: 3, type: 'standing', anims: ['standing-idle'], duration: [10, 25], facing: 0 },
+      { id: 'wander-1', x: -3, z: 1, type: 'standing', anims: ['walk-circle'], duration: [5, 10], facing: 0 },
+      { id: 'wander-2', x: 3, z: 1, type: 'standing', anims: ['walk-circle'], duration: [5, 10], facing: Math.PI },
+    ];
+
+    function initRoamingPOIs() {
+      const charArray = Array.from(characters.values());
+      charArray.forEach((char, i) => {
+        const ws = WORKSTATIONS[char.workstationIndex];
+        if (!ws) return;
+        POI_TABLE.push({
+          id: `own-desk-${i}`, x: ws.x, z: ws.z + 0.5, type: 'sitting',
+          anims: ['sitting-idle'], duration: [10, 20], facing: 0,
+          ownerOnly: char.workstationIndex
+        });
+        if (i > 0) {
+          const leftWs = WORKSTATIONS[char.workstationIndex - 1];
+          if (leftWs) POI_TABLE.push({
+            id: `visit-left-${i}`, x: leftWs.x + 0.5, z: leftWs.z + 1.0, type: 'standing',
+            anims: ['standing-idle'], duration: [8, 15], facing: 0
+          });
+        }
+        if (i < charArray.length - 1) {
+          const rightWs = WORKSTATIONS[char.workstationIndex + 1];
+          if (rightWs) POI_TABLE.push({
+            id: `visit-right-${i}`, x: rightWs.x - 0.5, z: rightWs.z + 1.0, type: 'standing',
+            anims: ['standing-idle'], duration: [8, 15], facing: 0
+          });
+        }
+      });
+      POI_TABLE.forEach(poi => { poi.occupiedBy = null; });
+    }
 
     // ========== 角色模型（原神 Genshin Impact 風格） ==========
     const CHARACTER_MODELS = [
@@ -1174,10 +1228,17 @@
         isMoving: false,
         moveSpeed: 2.0,
         targetAnimation: null,
-        targetRotation: 0
+        targetRotation: 0,
+        // AI roaming state
+        aiState: 'IDLE',
+        aiTimer: 0,
+        currentPOI: null,
+        workstationIndex: -1,
+        sessionActive: false
       };
 
       characters.set(sessionId, character);
+      character.workstationIndex = index;
       console.log(`[Character] 角色 ${sessionId} (${modelPath}) 載入完成, 骨頭配對: ${bonePairs.length}, 頭髮骨頭: ${hairBindPoses.length}`);
 
       return character;
