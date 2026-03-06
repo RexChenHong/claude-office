@@ -599,10 +599,12 @@
         // Skip bones handled by IK
         if (ikHandledBones.has(pair.tgt.name)) continue;
 
-        if (pair.isArm && pair.srcAnimBone && !useIKNow) {
-          // Delta retargeting for arms (non-IK characters, or IK character walking)
+        if (pair.isArm && character.abnormalArms && !useIKNow) {
+          // Group A (1.3m bones): bind-pose arms during walking too
+          pair.tgt.quaternion.copy(pair.tgtBindLocal);
+        } else if (pair.isArm && pair.srcAnimBone && !useIKNow) {
+          // Group B (normal bones): delta retarget with higher dampening for natural arm swing
           _deltaQ.copy(pair.srcBindLocalInv).multiply(pair.srcAnimBone.quaternion);
-          // IK characters have normal proportions → use higher dampening for bigger swing
           const dampen = character.useIK ? Math.min(pair.armDampen * 4.0, 1.0) : pair.armDampen;
           if (dampen < 1.0) {
             _deltaQ.slerp(_identQ, 1.0 - dampen);
@@ -1159,7 +1161,8 @@
         bonePairs: bonePairs,
         hairBindPoses: hairBindPoses,
         ikChains: ikChains,
-        useIK: true,  // All characters use 2-bone IK + finger curl axis remap
+        useIK: true,  // All characters use IK + finger curl axis remap
+        abnormalArms: ikChains.length > 0 && ikChains[0].abnormalArms,
         hipsPair: hipsPair,
         srcHipsBindY: srcHipsBindY,
         currentAction: null,
@@ -1500,6 +1503,8 @@
         window.controls = controls;
         window.scene = scene;
         window.characters = characters;
+        window.moveCharacterTo = moveCharacterTo;
+        window.switchAnimation = switchAnimation;
 
         // WebSocket 連接改為手動啟用（console 指令）
         window.connectLive = () => {
