@@ -3,45 +3,79 @@
 ## Metadata
 - **Type**: FIX
 - **Risk**: LOW (前端 JS 修改，不影響後端/生產)
-- **Status**: DONE
+- **Status**: IN_PROGRESS (Phase 4.5 — 架構重新評估)
 - **Created**: 2026-03-06
 - **Owner**: CTO (dispatch to SubAgent)
 
 ## Title
-Mixamo Retarget 骨架對齊修復 — 頭髮跳過 + 手部校正
+Mixamo Retarget 骨架對齊修復 — 頭髮已解決，手臂需全新方案
 
 ## Description
-V7 Mixamo 3D 角色版的 runtime retargeting（即時骨架動作複製）有兩個問題：
-1. 長頭髮角色（如 Columbina 27 根頭髮骨頭）的頭髮被 retarget 影響，看起來像手的延伸
-2. 手指 bind pose 差異導致手部變形（Mixamo T-pose vs 原神 A-pose）
+V7 Mixamo 3D 角色版的 runtime retargeting（即時骨架動作複製）：
+1. ~~長頭髮角色的頭髮被 retarget 影響~~ → **已解決**（bind pose 每幀重置）
+2. ~~配飾骨頭被拉扯~~ → **已解決**（Weapon/Ribbon/Sleeve/Shawl/Shoulder 也 bind pose 重置）
+3. **手臂動作不自然** → **4+ 次迭代全部失敗，需根本性新方案**
 
 ## Root Cause Analysis
-- 頭髮骨頭掛在 `Bip001 Head` 下，Head 被 retarget 旋轉後頭髮跟著動但方向錯誤
-- 手指骨頭 delta retargeting 在末端小骨頭上誤差累積放大
-- bind pose 世界旋轉差異在手指鏈（4-5 節）上逐級放大
+- 頭髮骨頭掛在 `Bip001 Head` 下 → bind pose 重置解決 ✅
+- **手臂核心問題**: Genshin 模型骨頭比例與 Mixamo 骨頭比例差異太大
+  - Genshin Group A (columbina/flins/zibai): Clavicle ~1.4m, UpperArm ~1.4m
+  - Genshin Group B (alice/lauma): Clavicle ~0.1m（正常）但 UpperArm 仍異常
+  - Mixamo 標準: 所有骨頭 < 0.3m
+- **Delta retargeting（不論 world-space 或 local-space）在比例差異大的骨架上根本不可行**
+  - 旋轉差（delta）在長骨頭上被放大成巨大的位移偏差
+  - 衰減只能壓抑動作幅度，無法修正方向和比例
+
+## Failed Iterations (知識累積)
+
+### Iteration 1: World-space delta for all
+- 方法: `delta = currentWorldQ * inv(bindWorldQ)` 全身統一
+- 結果: 身體/脊椎/腿正常，手臂嚴重變形
+- 教訓: World-space delta 在比例相近的骨頭（脊椎/腿）可行，手臂不行
+
+### Iteration 2: Local-space delta + bone-length dampening
+- 方法: 手臂改 `localDelta = inv(srcBindLocal) * srcCurrentLocal`，按骨頭長度衰減（>1m=15%, >0.5m=50%）
+- 結果: 手指向後彎折
+- 教訓: 衰減比例不足以修正根本的比例差異
+
+### Iteration 3: Skip long bones entirely
+- 方法: 骨頭長度 > 0.5m 的直接 dampening = 0（不動）
+- 結果: 手臂完全不動，看起來像假人
+- 教訓: 跳過關鍵骨頭等於放棄動畫
+
+### Iteration 4: Name-based dampening
+- 方法: Finger=0, Clavicle/UpperArm=20%, Forearm=60%, Hand=80%
+- 結果: 行走時手臂動作仍不自然（船長確認）
+- 教訓: **Delta retargeting 方法本身對此骨架比例差不適用**
+
+## Next Approach (待執行)
+- 比對 demo FBX `realistic_female_character_for_mixamo.fbx` 骨架 vs Genshin 骨架
+- 嘗試完全不同的方法：可能需要 skeleton remapping 而非 delta retargeting
+- **一次只處理一個角色**，成功後再推廣
 
 ## Files to Modify
 - src/ui/public/v7-mixamo.html (主要修改)
 
 ## Execution Steps
-- [x] 1. 頭髮骨頭每幀重置 bind pose（hairBindPoses 機制），不參與 retarget
-- [x] 2. 跳過整條手臂鏈（Clavicle→UpperArm→Forearm→Hand→Finger），避免 T/A-pose 差異造成變形
-- [x] 3. 用戶目視驗證修復效果（Playwright 截圖 timeout，改人工確認）
-- [ ] 4. 部署到 PM2 服務（已自動部署，PM2 watch 模式）
+- [x] 1. 頭髮骨頭每幀重置 bind pose — **成功**
+- [x] 2. 配飾骨頭（Weapon/Ribbon/Sleeve）也 bind pose 重置 — **成功**
+- [ ] 3. 手臂 delta retarget — **4 次迭代失敗，進入 Phase 4.5 架構重評**
+- [ ] 4. 探索全新方案（skeleton remapping / IK / 其他）
+- [ ] 5. 一個角色成功後推廣到其他 4 個
+- [ ] 6. 自動截圖驗證 + 部署
 
 ## Acceptance Criteria
 - [x] 頭髮不再跟隨 Mixamo 動畫扭曲，保持自然垂落
-- [x] 手臂/手指不再明顯變形（代價：手部動畫不顯示，working 動畫只有身體動作）
-- [x] 5 個角色都正常顯示
+- [ ] 手臂自然擺動（行走時前後擺、打字時手在鍵盤上）
+- [ ] 5 個角色都正常顯示
 - [x] 無 console error
 
-## Known Limitations
-- 手臂完全跳過 retarget，因此 working/typing 動畫中手部保持靜止
-- 未來可考慮只對手臂做 bind pose 補償而非完全跳過
-
 ## Technical Notes
+- **FBX 雙層骨頭**: 每個骨頭有同名 parent（`bone.parent.quaternion` 有動畫資料）+ child（identity）
 - 角色骨頭命名: `Bip001 *_數字後綴` (原神) vs `mixamorig*` (Mixamo)
 - 頭髮骨頭: `Bone_Hair*`，全部掛在 `Bip001 Head` 下
-- retarget 核心函數: `syncSkeletonPose()` (line 286)
-- 骨頭配對: `buildBonePairs()` (line 241)
-- 每幀 delta 計算: worldQ * srcBindWorldInv * tgtBindWorld → local
+- **身體**: world-space delta retarget（worldQ * srcBindWorldInv * tgtBindWorld → local）— 可行
+- **手臂**: ❌ delta retargeting 全部失敗 — 需新方案
+- 截圖流程: canvas.toDataURL → Bash base64 decode → ZAI analyze_image → rm
+- 影片流程: canvas.captureStream(15) → MediaRecorder → WebM → ffmpeg → MP4 → ZAI analyze_video
+- Demo FBX 檔案: `/mnt/e_drive/claude-office/assets/characters/3d/` 內有完整可用的動畫和角色
