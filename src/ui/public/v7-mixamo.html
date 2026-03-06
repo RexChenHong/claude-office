@@ -365,8 +365,17 @@
         const sideTag = `_${side}_`;
         const fingerBones = pairs.filter(p => p.tgt.name.includes('Finger') && p.tgt.name.includes(sideTag));
 
+        // Detect abnormal bone proportions (Group A Genshin: upper:fore ~ 5:1).
+        // These models have bizarre bone geometry (Clavicle extends 1.3m downward)
+        // making 2-bone IK impossible. Use world-space rotation copy instead.
+        const boneRatio = Math.max(tgtUpperLen, tgtForeLen) / Math.min(tgtUpperLen, tgtForeLen);
+        const abnormalArms = boneRatio > 2.0;
+        if (abnormalArms) {
+          console.log(`[IK] ${side} arm: ABNORMAL ratio=${boneRatio.toFixed(1)} → using world-space rotation copy instead of geometric IK`);
+        }
+
         ikChains.push({
-          side,
+          side, abnormalArms,
           clavicle, upperArm, forearm, hand, fingerBones,
           tgtUpperLen, tgtForeLen,
           srcUpperLen, srcForeLen,
@@ -375,7 +384,7 @@
           upperBindLocal, forearmBindLocal, handBindLocal, bindForeDir
         });
 
-        console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}, fingers=${fingerBones.length}`);
+        console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}, abnormal=${abnormalArms}, fingers=${fingerBones.length}`);
       }
 
       // 收集需要每幀重設 bind pose 的骨頭：
@@ -573,10 +582,13 @@
       const ikHandledBones = new Set();
       if (useIKNow && character.ikChains) {
         for (const chain of character.ikChains) {
+          // For abnormal arms (Group A), also handle clavicle in IK pass
+          if (chain.abnormalArms) {
+            ikHandledBones.add(chain.clavicle.tgt.name);
+          }
           ikHandledBones.add(chain.upperArm.tgt.name);
           ikHandledBones.add(chain.forearm.tgt.name);
           ikHandledBones.add(chain.hand.tgt.name);
-          // Finger bones: handled by IK pass (bind-local, follow hand direction)
           for (const fb of chain.fingerBones) {
             ikHandledBones.add(fb.tgt.name);
           }
@@ -629,56 +641,70 @@
       // === IK Pass: solve arm chains (seated only) ===
       if (useIKNow && character.ikChains) {
         for (const chain of character.ikChains) {
-          // Get Mixamo hand world position (this is where the hand SHOULD be)
-          chain.hand.src.getWorldPosition(_ikHandTarget);
+          if (chain.abnormalArms) {
+            // === Group A: World-space rotation copy ===
+            // These models have bizarre bone geometry (Clavicle 1.3m long, UpperArm at Y=-0.3)
+            // making geometric IK impossible. Instead, copy Mixamo world rotations directly.
 
-          // Scale: both models are 1.7m, but arm proportions differ
-          // Get current Mixamo shoulder position and compute hand offset from shoulder
-          chain.upperArm.src.getWorldPosition(_ikMixamoShoulder);
-          const handOffset = _ikHandTarget.clone().sub(_ikMixamoShoulder);
+            // Group A: Keep arm bones at bind pose when seated.
+            // Any rotation delta on 1.3m bones causes massive visual distortion.
+            // Finger curl (handled below) provides the typing feel.
+            // Character is behind desk, so arm position isn't highly visible.
+            const armBones = [chain.clavicle, chain.upperArm, chain.forearm, chain.hand];
+            for (const ab of armBones) {
+              ab.tgt.quaternion.copy(ab.tgtBindLocal);
+              ab.tgt.updateMatrix();
+              ab.tgt.updateMatrixWorld(false);
+            }
+          } else {
+            // === Group B: 2-Bone geometric IK (alice, flins) ===
+            // Get Mixamo hand world position (this is where the hand SHOULD be)
+            chain.hand.src.getWorldPosition(_ikHandTarget);
 
-          // Scale the offset by the ratio of Genshin arm reach / Mixamo arm reach
-          const srcArmLen = chain.srcUpperLen + chain.srcForeLen;
-          const tgtArmLen = chain.tgtUpperLen + chain.tgtForeLen;
-          const armScale = tgtArmLen / srcArmLen;
-          handOffset.multiplyScalar(armScale);
+            // Get current Mixamo shoulder position and compute hand offset from shoulder
+            chain.upperArm.src.getWorldPosition(_ikMixamoShoulder);
+            const handOffset = _ikHandTarget.clone().sub(_ikMixamoShoulder);
 
-          // Compute target in world space (Genshin shoulder + scaled offset)
-          chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
-          _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
+            // Scale: both models ~1.7m, arm proportions similar for Group B
+            const srcArmLen = chain.srcUpperLen + chain.srcForeLen;
+            const tgtArmLen = chain.tgtUpperLen + chain.tgtForeLen;
+            const armScale = tgtArmLen / srcArmLen;
+            handOffset.multiplyScalar(armScale);
 
-          // Offset IK target: lift wrist slightly, pull back toward keyboard center
-          _ikHandTarget.y += 0.10;
-          _ikHandTarget.z -= 0.06;
+            // Compute target in world space (Genshin shoulder + scaled offset)
+            chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
+            _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
 
-          // Solve IK
-          solveTwoBoneIK(
-            chain.upperArm.tgt,
-            chain.forearm.tgt,
-            _ikHandTarget,
-            chain.elbowDir,
-            chain.tgtUpperLen,
-            chain.tgtForeLen,
-            chain.upperBindLocal,
-            chain.forearmBindLocal,
-            chain.bindForeDir
-          );
+            // Offset IK target: lift wrist slightly, pull back toward keyboard center
+            _ikHandTarget.y += 0.10;
+            _ikHandTarget.z -= 0.06;
 
-          // Hand: keep bind-pose local rotation → hand naturally follows forearm direction
-          // (old approach set world-space rotation which fought the IK forearm angle = 90° wrist bend)
-          chain.hand.tgt.quaternion.copy(chain.handBindLocal);
-          chain.hand.tgt.updateMatrix();
-          chain.hand.tgt.updateMatrixWorld(false);
+            // Solve IK
+            solveTwoBoneIK(
+              chain.upperArm.tgt,
+              chain.forearm.tgt,
+              _ikHandTarget,
+              chain.elbowDir,
+              chain.tgtUpperLen,
+              chain.tgtForeLen,
+              chain.upperBindLocal,
+              chain.forearmBindLocal,
+              chain.bindForeDir
+            );
 
-          // Fingers: remap Mixamo curl axis to Genshin curl axis
+            // Hand: keep bind-pose local rotation → hand naturally follows forearm direction
+            chain.hand.tgt.quaternion.copy(chain.handBindLocal);
+            chain.hand.tgt.updateMatrix();
+            chain.hand.tgt.updateMatrixWorld(false);
+          }
+
+          // Fingers: remap Mixamo curl axis to Genshin curl axis (both groups)
           // Mixamo bones extend along local Y, curl = X rotation
           // Genshin bones extend along local X, curl = -Z rotation
-          // Direct local-space delta transfer was ROLL (wrong axis) — must remap
           for (const fb of chain.fingerBones) {
             fb.tgt.quaternion.copy(fb.tgtBindLocal);
             if (fb.srcAnimBone && !fb.tgt.name.includes('Nub')) {
               _deltaQ.copy(fb.srcBindLocalInv).multiply(fb.srcAnimBone.quaternion);
-              // Extract curl angle from Mixamo X component, apply as -Z on Genshin
               const curlHalf = Math.atan2(_deltaQ.x, _deltaQ.w);
               _deltaQ.set(0, 0, Math.sin(curlHalf), Math.cos(curlHalf));
               fb.tgt.quaternion.multiply(_deltaQ);
@@ -1133,7 +1159,7 @@
         bonePairs: bonePairs,
         hairBindPoses: hairBindPoses,
         ikChains: ikChains,
-        useIK: modelPath.includes('alice'),  // Only alice uses IK initially
+        useIK: true,  // All characters use 2-bone IK + finger curl axis remap
         hipsPair: hipsPair,
         srcHipsBindY: srcHipsBindY,
         currentAction: null,
