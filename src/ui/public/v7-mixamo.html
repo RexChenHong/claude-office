@@ -676,7 +676,7 @@
             fb.tgt.quaternion.copy(fb.tgtBindLocal);
             if (fb.srcAnimBone) {
               _deltaQ.copy(fb.srcBindLocalInv).multiply(fb.srcAnimBone.quaternion);
-              _deltaQ.slerp(_identQ, 0.70); // 70% toward identity = keep 30% curl
+              _deltaQ.slerp(_identQ, 0.15); // 15% toward identity = keep 85% curl + keystroke dynamics
               fb.tgt.quaternion.multiply(_deltaQ);
             }
           }
