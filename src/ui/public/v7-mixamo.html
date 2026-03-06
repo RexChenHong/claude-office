@@ -361,9 +361,13 @@
         hand.tgt.getWorldPosition(_p3);
         const bindForeDir = _p3.clone().sub(_p2).normalize();
 
+        // Pre-collect finger bone pairs for this side (avoid per-frame full-array scan)
+        const sideTag = `_${side}_`;
+        const fingerBones = pairs.filter(p => p.tgt.name.includes('Finger') && p.tgt.name.includes(sideTag));
+
         ikChains.push({
           side,
-          clavicle, upperArm, forearm, hand,
+          clavicle, upperArm, forearm, hand, fingerBones,
           tgtUpperLen, tgtForeLen,
           srcUpperLen, srcForeLen,
           srcShoulderBindPos, tgtShoulderBindPos,
@@ -371,7 +375,7 @@
           upperBindLocal, forearmBindLocal, handBindLocal, bindForeDir
         });
 
-        console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}`);
+        console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}, fingers=${fingerBones.length}`);
       }
 
       // 收集需要每幀重設 bind pose 的骨頭：
@@ -572,7 +576,10 @@
           ikHandledBones.add(chain.upperArm.tgt.name);
           ikHandledBones.add(chain.forearm.tgt.name);
           ikHandledBones.add(chain.hand.tgt.name);
-          // Fingers are already armDampen=0, will be skipped anyway
+          // Finger bones: handled by IK pass (bind-local, follow hand direction)
+          for (const fb of chain.fingerBones) {
+            ikHandledBones.add(fb.tgt.name);
+          }
         }
       }
 
@@ -662,6 +669,11 @@
           chain.hand.tgt.quaternion.copy(chain.handBindLocal);
           chain.hand.tgt.updateMatrix();
           chain.hand.tgt.updateMatrixWorld(false);
+
+          // Fingers: bind-local so they follow hand direction naturally
+          for (const fb of chain.fingerBones) {
+            fb.tgt.quaternion.copy(fb.tgtBindLocal);
+          }
         }
       }
 
