@@ -251,15 +251,14 @@
         const src = srcBones[mixamoName];
         const tgtName = boneMap[bipBase];
         if (!src || !tgtName) continue;
-        // 跳過整條手臂鏈 — 原神模型骨架結構特殊（Clavicle 長度 1.24），
-        // retarget 會導致嚴重變形。手臂保持 bind pose（A-pose）。
-        if (tgtName.includes('Clavicle') || tgtName.includes('UpperArm') ||
-            tgtName.includes('Forearm') || tgtName.includes('Hand') ||
-            tgtName.includes('Finger')) continue;
         const tgt = genshinSkeleton.bones.find(b => b.name === tgtName);
         if (!tgt) continue;
 
-        // World-space delta retargeting（原版，對脊椎/腿效果好）
+        const isArm = tgtName.includes('Clavicle') || tgtName.includes('UpperArm') ||
+                      tgtName.includes('Forearm') || tgtName.includes('Hand') ||
+                      tgtName.includes('Finger');
+
+        // World-space delta retargeting（身體/脊椎/腿/頭用 world-space delta）
         const srcBindWorld = new THREE.Quaternion();
         src.getWorldQuaternion(srcBindWorld);
         const srcBindWorldInv = srcBindWorld.clone().invert();
@@ -269,7 +268,32 @@
 
         const tgtBindLocal = tgt.quaternion.clone();
 
-        pairs.push({ src, tgt, srcBindWorldInv, tgtBindWorld, tgtBindLocal });
+        // 手臂用 local-space delta（FBX 雙層骨頭：src.parent 存動畫資料）
+        // 原因：Genshin 模型 Clavicle/UpperArm 骨頭長 1.4m+，world-space delta 造成巨大變形
+        let srcAnimBone = null;
+        let srcBindLocalInv = null;
+        let armDampen = 1.0; // 1.0 = 完整 delta，0.0 = 無 delta
+        if (isArm && src.parent && src.parent.name === src.name && src.parent.isBone) {
+          srcAnimBone = src.parent;
+          srcBindLocalInv = src.parent.quaternion.clone().invert();
+
+          // 分級衰減策略：
+          // - Clavicle/UpperArm: 骨頭超長(~1.4m)但需要基本手臂擺動 → 20%
+          // - Forearm: 中等長度 → 60%
+          // - Hand: 較短 → 80%
+          // - Finger: 末端累積誤差大 → 0% (完全跳過)
+          if (tgtName.includes('Finger')) {
+            armDampen = 0;
+          } else if (tgtName.includes('Clavicle') || tgtName.includes('UpperArm')) {
+            armDampen = 0.2;
+          } else if (tgtName.includes('Forearm')) {
+            armDampen = 0.6;
+          } else if (tgtName.includes('Hand')) {
+            armDampen = 0.8;
+          }
+        }
+
+        pairs.push({ src, tgt, srcBindWorldInv, tgtBindWorld, tgtBindLocal, isArm, srcAnimBone, srcBindLocalInv, armDampen });
       }
 
       // 按骨頭深度排序（父骨頭先處理），確保子骨頭能讀到正確的父世界矩陣
@@ -281,26 +305,247 @@
       }
       pairs.sort((a, b) => boneDepth(a.tgt) - boneDepth(b.tgt));
 
-      // 收集頭髮骨頭的 bind pose local quaternion
-      // 頭髮是 Head 的子骨頭，retarget Head 後頭髮會跟著扭曲
-      // 記錄原始 local rotation，每幀重設回去
-      const hairBindPoses = [];
+      // === IK 手臂鏈 ===
+      // 為每隻手臂建立 IK 鏈：Clavicle → UpperArm → Forearm → Hand
+      // IK 只用於 alice（index 3），其他角色保持 delta retarget
+      const ikChains = [];
+      const sides = ['L', 'R'];
+      for (const side of sides) {
+        const clavicle = pairs.find(p => p.tgt.name.includes(`${side}_Clavicle`));
+        const upperArm = pairs.find(p => p.tgt.name.includes(`${side}_UpperArm`));
+        const forearm = pairs.find(p => p.tgt.name.includes(`${side}_Forearm`));
+        const hand = pairs.find(p => p.tgt.name.includes(`${side}_Hand`));
+        if (!clavicle || !upperArm || !forearm || !hand) continue;
+
+        // 測量 Genshin 骨頭世界距離（非骨頭長度，是關節間距離）
+        const _p1 = new THREE.Vector3(), _p2 = new THREE.Vector3(), _p3 = new THREE.Vector3(), _p4 = new THREE.Vector3();
+        upperArm.tgt.getWorldPosition(_p1);  // 肩關節
+        forearm.tgt.getWorldPosition(_p2);   // 肘關節
+        hand.tgt.getWorldPosition(_p3);      // 腕關節
+
+        const tgtUpperLen = _p1.distanceTo(_p2);
+        const tgtForeLen = _p2.distanceTo(_p3);
+
+        // 測量 Mixamo 骨頭世界距離
+        upperArm.src.getWorldPosition(_p1);
+        forearm.src.getWorldPosition(_p2);
+        hand.src.getWorldPosition(_p3);
+
+        const srcUpperLen = _p1.distanceTo(_p2);
+        const srcForeLen = _p2.distanceTo(_p3);
+
+        // Mixamo 肩膀位置（IK 起點參考）
+        clavicle.src.getWorldPosition(_p4);
+        const srcShoulderBindPos = _p4.clone();
+
+        // Genshin 肩膀位置
+        clavicle.tgt.getWorldPosition(_p4);
+        const tgtShoulderBindPos = _p4.clone();
+
+        // Pole target 方向：肘部偏向（bind pose 時的肘部相對肩膀方向）
+        // 用於控制肘部朝向（向後彎而非向前）
+        forearm.tgt.getWorldPosition(_p1);
+        upperArm.tgt.getWorldPosition(_p2);
+        const elbowDir = _p1.clone().sub(_p2).normalize();
+
+        // Store bind pose local quaternions for axis-agnostic IK
+        const upperBindLocal = upperArm.tgt.quaternion.clone();
+        const forearmBindLocal = forearm.tgt.quaternion.clone();
+
+        // Bind direction from forearm to hand (world space)
+        // Re-fetch Genshin positions since _p2/_p3 were overwritten by Mixamo measurements
+        forearm.tgt.getWorldPosition(_p2);
+        hand.tgt.getWorldPosition(_p3);
+        const bindForeDir = _p3.clone().sub(_p2).normalize();
+
+        ikChains.push({
+          side,
+          clavicle, upperArm, forearm, hand,
+          tgtUpperLen, tgtForeLen,
+          srcUpperLen, srcForeLen,
+          srcShoulderBindPos, tgtShoulderBindPos,
+          elbowDir,
+          upperBindLocal, forearmBindLocal, bindForeDir
+        });
+
+        console.log(`[IK] ${side} arm: tgt upper=${tgtUpperLen.toFixed(3)} fore=${tgtForeLen.toFixed(3)}, src upper=${srcUpperLen.toFixed(3)} fore=${srcForeLen.toFixed(3)}`);
+      }
+
+      // 收集需要每幀重設 bind pose 的骨頭：
+      // 1. 頭髮：Head 子骨頭，retarget Head 後會跟著扭曲
+      // 2. 配飾：Clavicle/手臂子骨頭（Weapon, Ribbon, Sleeve, Shawl, Shoulder 等）
+      //    retarget 手臂後配飾會被連帶拉動
+      const resetBindPoses = [];
+      const pairedBoneNames = new Set(pairs.map(p => p.tgt.name));
+
       if (genshinSkeleton) {
         for (const bone of genshinSkeleton.bones) {
+          // 頭髮骨頭
           if (bone.name.includes('Hair')) {
-            hairBindPoses.push({ bone, bindLocal: bone.quaternion.clone() });
+            resetBindPoses.push({ bone, bindLocal: bone.quaternion.clone() });
+            continue;
+          }
+          // 配飾骨頭：不在配對表中、且是手臂骨頭的後代
+          if (!pairedBoneNames.has(bone.name)) {
+            let parent = bone.parent;
+            while (parent) {
+              if (pairedBoneNames.has(parent.name) && (
+                parent.name.includes('Clavicle') || parent.name.includes('UpperArm') ||
+                parent.name.includes('Forearm') || parent.name.includes('Hand')
+              )) {
+                resetBindPoses.push({ bone, bindLocal: bone.quaternion.clone() });
+                break;
+              }
+              parent = parent.parent;
+            }
           }
         }
       }
 
-      return { pairs, hairBindPoses };
+      return { pairs, hairBindPoses: resetBindPoses, ikChains };
+    }
+
+    /**
+     * 2-Bone IK Solver (axis-agnostic, direction-delta approach)
+     * Works with arbitrary bone orientations (e.g., Genshin models).
+     * Instead of assuming Z-forward, computes rotation deltas from bind pose directions.
+     *
+     * @param {THREE.Bone} upperArmBone - The UpperArm bone (Genshin target)
+     * @param {THREE.Bone} forearmBone - The Forearm bone (Genshin target)
+     * @param {THREE.Vector3} targetWorldPos - Where the hand should be (world space)
+     * @param {THREE.Vector3} poleDir - Hint direction for elbow (world space, normalized)
+     * @param {number} upperLen - Distance from UpperArm joint to Forearm joint
+     * @param {number} foreLen - Distance from Forearm joint to Hand joint
+     * @param {THREE.Quaternion} upperBindLocal - UpperArm bind pose local quaternion
+     * @param {THREE.Quaternion} forearmBindLocal - Forearm bind pose local quaternion
+     * @param {THREE.Vector3} bindForeDir - Bind pose forearm→hand direction (world space)
+     */
+    const _ikShoulderPos = new THREE.Vector3();
+    const _ikElbowPos = new THREE.Vector3();
+    const _ikTargetDir = new THREE.Vector3();
+    const _ikCross = new THREE.Vector3();
+    const _ikUp = new THREE.Vector3(0, 1, 0);
+    const _ikParentWorldQInv = new THREE.Quaternion();
+    const _ikBindUpperDir = new THREE.Vector3();
+    const _ikDesiredUpperDir = new THREE.Vector3();
+    const _ikDesiredForeDir = new THREE.Vector3();
+    const _ikCurrentForeDir = new THREE.Vector3();
+    const _ikNewElbowPos = new THREE.Vector3();
+    const _ikUpperDeltaQ = new THREE.Quaternion();
+    const _ikForeDeltaQ = new THREE.Quaternion();
+    const _ikCurrentWorldQ = new THREE.Quaternion();
+    const _ikNewWorldQ = new THREE.Quaternion();
+    const _ikPerpDir = new THREE.Vector3();
+
+    function solveTwoBoneIK(upperArmBone, forearmBone, targetWorldPos, poleDir, upperLen, foreLen, upperBindLocal, forearmBindLocal, bindForeDir) {
+      // Step 1: Reset bones to bind pose (known starting point)
+      upperArmBone.quaternion.copy(upperBindLocal);
+      upperArmBone.updateMatrix();
+      upperArmBone.updateMatrixWorld(false);
+      forearmBone.quaternion.copy(forearmBindLocal);
+      forearmBone.updateMatrix();
+      forearmBone.updateMatrixWorld(false);
+
+      // Step 2: Get bind pose positions and directions
+      upperArmBone.getWorldPosition(_ikShoulderPos);
+      forearmBone.getWorldPosition(_ikElbowPos);
+
+      // Bind direction: shoulder → elbow (world space)
+      _ikBindUpperDir.copy(_ikElbowPos).sub(_ikShoulderPos).normalize();
+
+      // Step 3: Compute new elbow position using law of cosines
+      _ikTargetDir.copy(targetWorldPos).sub(_ikShoulderPos);
+      let dist = _ikTargetDir.length();
+
+      // Clamp to reachable range
+      const minReach = Math.abs(upperLen - foreLen) + 0.001;
+      const maxReach = upperLen + foreLen - 0.001;
+      dist = Math.max(minReach, Math.min(maxReach, dist));
+      _ikTargetDir.normalize();
+
+      // Cosine of angle at shoulder
+      let cosA = (upperLen * upperLen + dist * dist - foreLen * foreLen) / (2 * upperLen * dist);
+      cosA = Math.max(-1, Math.min(1, cosA));
+
+      // Projection along target direction and perpendicular distance
+      const projLen = upperLen * cosA;
+      const perpLen = Math.sqrt(Math.max(0, upperLen * upperLen - projLen * projLen));
+
+      // Build coordinate frame for elbow placement
+      // right = targetDir x poleDir (perpendicular to both)
+      _ikCross.crossVectors(_ikTargetDir, poleDir);
+      if (_ikCross.lengthSq() < 0.0001) {
+        _ikCross.crossVectors(_ikTargetDir, _ikUp);
+      }
+      _ikCross.normalize();
+
+      // perpDir = right x targetDir (direction toward pole target)
+      _ikPerpDir.crossVectors(_ikCross, _ikTargetDir).normalize();
+
+      // New elbow position = shoulder + targetDir * projLen + perpDir * perpLen
+      _ikNewElbowPos.copy(_ikShoulderPos)
+        .addScaledVector(_ikTargetDir, projLen)
+        .addScaledVector(_ikPerpDir, perpLen);
+
+      // Step 4: Compute direction delta for UpperArm
+      _ikDesiredUpperDir.copy(_ikNewElbowPos).sub(_ikShoulderPos).normalize();
+
+      // Rotation from bind direction to desired direction
+      _ikUpperDeltaQ.setFromUnitVectors(_ikBindUpperDir, _ikDesiredUpperDir);
+
+      // Apply delta to current (bind pose) world quaternion
+      upperArmBone.getWorldQuaternion(_ikCurrentWorldQ);
+      _ikNewWorldQ.copy(_ikUpperDeltaQ).multiply(_ikCurrentWorldQ);
+
+      // Convert to local space
+      if (upperArmBone.parent) {
+        upperArmBone.parent.getWorldQuaternion(_ikParentWorldQInv);
+        _ikParentWorldQInv.invert();
+        upperArmBone.quaternion.copy(_ikParentWorldQInv).multiply(_ikNewWorldQ);
+      } else {
+        upperArmBone.quaternion.copy(_ikNewWorldQ);
+      }
+      upperArmBone.updateMatrix();
+      upperArmBone.updateMatrixWorld(false);
+
+      // Step 5: Compute direction delta for Forearm
+      // After UpperArm rotation, get actual new elbow position
+      forearmBone.getWorldPosition(_ikElbowPos);
+
+      // Desired forearm direction: elbow → target
+      _ikDesiredForeDir.copy(targetWorldPos).sub(_ikElbowPos).normalize();
+
+      // Current forearm direction: bind forearm→hand direction rotated by upperArm delta
+      _ikCurrentForeDir.copy(bindForeDir).applyQuaternion(_ikUpperDeltaQ);
+
+      // Rotation from current to desired
+      _ikForeDeltaQ.setFromUnitVectors(_ikCurrentForeDir, _ikDesiredForeDir);
+
+      // Apply delta to forearm's current world quaternion
+      forearmBone.getWorldQuaternion(_ikCurrentWorldQ);
+      _ikNewWorldQ.copy(_ikForeDeltaQ).multiply(_ikCurrentWorldQ);
+
+      // Convert to local space
+      if (forearmBone.parent) {
+        forearmBone.parent.getWorldQuaternion(_ikParentWorldQInv);
+        _ikParentWorldQInv.invert();
+        forearmBone.quaternion.copy(_ikParentWorldQInv).multiply(_ikNewWorldQ);
+      } else {
+        forearmBone.quaternion.copy(_ikNewWorldQ);
+      }
+      forearmBone.updateMatrix();
+      forearmBone.updateMatrixWorld(false);
     }
 
     // 每幀同步骨架姿態（World-Space Delta Retargeting）
     const _worldQ = new THREE.Quaternion();
     const _deltaQ = new THREE.Quaternion();
     const _parentQ = new THREE.Quaternion();
+    const _identQ = new THREE.Quaternion(); // identity for slerp dampening
     const _tmpPos = new THREE.Vector3();
+    const _ikHandTarget = new THREE.Vector3();
+    const _ikMixamoShoulder = new THREE.Vector3();
+    const _ikGenshinShoulder = new THREE.Vector3();
 
     function syncSkeletonPose(character) {
       if (!character.bonePairs || character.bonePairs.length === 0) return;
@@ -312,28 +557,106 @@
       character.mixamoModel.rotation.y = character.model.rotation.y;
       character.mixamoModel.updateMatrixWorld(true);
 
+      // Determine which bones are handled by IK (skip in pair loop)
+      const ikHandledBones = new Set();
+      if (character.useIK && character.ikChains) {
+        for (const chain of character.ikChains) {
+          ikHandledBones.add(chain.upperArm.tgt.name);
+          ikHandledBones.add(chain.forearm.tgt.name);
+          ikHandledBones.add(chain.hand.tgt.name);
+          // Fingers are already armDampen=0, will be skipped anyway
+        }
+      }
+
       for (const pair of character.bonePairs) {
-        // 1. 取得 Mixamo 骨頭當前世界旋轉
-        pair.src.getWorldQuaternion(_worldQ);
+        // Skip bones handled by IK
+        if (ikHandledBones.has(pair.tgt.name)) continue;
 
-        // 2. Delta = 當前世界旋轉 * 逆(bind pose 世界旋轉)
-        _deltaQ.copy(_worldQ).multiply(pair.srcBindWorldInv);
-
-        // 3. 把 delta 套到原神角色的 bind pose 上
-        _worldQ.copy(_deltaQ).multiply(pair.tgtBindWorld);
-
-        // 4. 轉換為 target bone 的本地旋轉
-        if (pair.tgt.parent) {
-          pair.tgt.parent.getWorldQuaternion(_parentQ);
-          _parentQ.invert();
-          pair.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
+        if (pair.isArm && pair.srcAnimBone && !character.useIK) {
+          // Non-IK characters: Local-space delta retargeting for arms (existing code)
+          _deltaQ.copy(pair.srcBindLocalInv).multiply(pair.srcAnimBone.quaternion);
+          if (pair.armDampen < 1.0) {
+            _deltaQ.slerp(_identQ, 1.0 - pair.armDampen);
+          }
+          pair.tgt.quaternion.copy(pair.tgtBindLocal).multiply(_deltaQ);
+        } else if (pair.isArm && character.useIK) {
+          // IK character: Clavicle uses world-space delta (safe for alice, 0.1m bone)
+          pair.src.getWorldQuaternion(_worldQ);
+          _deltaQ.copy(_worldQ).multiply(pair.srcBindWorldInv);
+          _worldQ.copy(_deltaQ).multiply(pair.tgtBindWorld);
+          if (pair.tgt.parent) {
+            pair.tgt.parent.getWorldQuaternion(_parentQ);
+            _parentQ.invert();
+            pair.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
+          } else {
+            pair.tgt.quaternion.copy(_worldQ);
+          }
         } else {
-          pair.tgt.quaternion.copy(_worldQ);
+          // Body/spine/legs/head: World-space delta retargeting (unchanged)
+          pair.src.getWorldQuaternion(_worldQ);
+          _deltaQ.copy(_worldQ).multiply(pair.srcBindWorldInv);
+          _worldQ.copy(_deltaQ).multiply(pair.tgtBindWorld);
+          if (pair.tgt.parent) {
+            pair.tgt.parent.getWorldQuaternion(_parentQ);
+            _parentQ.invert();
+            pair.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
+          } else {
+            pair.tgt.quaternion.copy(_worldQ);
+          }
         }
 
-        // 5. 增量更新世界矩陣，讓子骨頭能讀到正確的父骨頭旋轉
         pair.tgt.updateMatrix();
         pair.tgt.updateMatrixWorld(false);
+      }
+
+      // === IK Pass: solve arm chains ===
+      if (character.useIK && character.ikChains) {
+        for (const chain of character.ikChains) {
+          // Get Mixamo hand world position (this is where the hand SHOULD be)
+          chain.hand.src.getWorldPosition(_ikHandTarget);
+
+          // Scale: both models are 1.7m, but arm proportions differ
+          // Get current Mixamo shoulder position and compute hand offset from shoulder
+          chain.upperArm.src.getWorldPosition(_ikMixamoShoulder);
+          const handOffset = _ikHandTarget.clone().sub(_ikMixamoShoulder);
+
+          // Scale the offset by the ratio of Genshin arm reach / Mixamo arm reach
+          const srcArmLen = chain.srcUpperLen + chain.srcForeLen;
+          const tgtArmLen = chain.tgtUpperLen + chain.tgtForeLen;
+          const armScale = tgtArmLen / srcArmLen;
+          handOffset.multiplyScalar(armScale);
+
+          // Compute target in world space (Genshin shoulder + scaled offset)
+          chain.upperArm.tgt.getWorldPosition(_ikGenshinShoulder);
+          _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
+
+          // Solve IK
+          solveTwoBoneIK(
+            chain.upperArm.tgt,
+            chain.forearm.tgt,
+            _ikHandTarget,
+            chain.elbowDir,
+            chain.tgtUpperLen,
+            chain.tgtForeLen,
+            chain.upperBindLocal,
+            chain.forearmBindLocal,
+            chain.bindForeDir
+          );
+
+          // Hand: copy Mixamo hand rotation (world-space delta, same as body)
+          chain.hand.src.getWorldQuaternion(_worldQ);
+          _deltaQ.copy(_worldQ).multiply(chain.hand.srcBindWorldInv);
+          _worldQ.copy(_deltaQ).multiply(chain.hand.tgtBindWorld);
+          if (chain.hand.tgt.parent) {
+            chain.hand.tgt.parent.getWorldQuaternion(_parentQ);
+            _parentQ.invert();
+            chain.hand.tgt.quaternion.copy(_parentQ).multiply(_worldQ);
+          } else {
+            chain.hand.tgt.quaternion.copy(_worldQ);
+          }
+          chain.hand.tgt.updateMatrix();
+          chain.hand.tgt.updateMatrixWorld(false);
+        }
       }
 
       // 重設頭髮骨頭的 local rotation 回 bind pose
@@ -690,9 +1013,10 @@
       scene.add(mixamoModel);
 
       // 5. 建立骨頭配對表 + bind pose（Mixamo → Genshin）
-      const retargetResult = skeleton ? buildBonePairs(mixamoModel, model, skeleton, boneMap) : { pairs: [], hairBindPoses: [] };
+      const retargetResult = skeleton ? buildBonePairs(mixamoModel, model, skeleton, boneMap) : { pairs: [], hairBindPoses: [], ikChains: [] };
       const bonePairs = retargetResult.pairs;
       const hairBindPoses = retargetResult.hairBindPoses;
+      const ikChains = retargetResult.ikChains;
 
       // 初始位置：牢房
       const cellPos = CELLS[index];
@@ -730,6 +1054,8 @@
         boneMap: boneMap,
         bonePairs: bonePairs,
         hairBindPoses: hairBindPoses,
+        ikChains: ikChains,
+        useIK: modelPath.includes('alice'),  // Only alice uses IK initially
         hipsPair: hipsPair,
         srcHipsBindY: srcHipsBindY,
         currentAction: null,
