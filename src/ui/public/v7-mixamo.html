@@ -1446,43 +1446,13 @@
     // ========== 更新角色狀態 ==========
     function updateCharacterStates() {
       const sessionArray = Array.from(sessions.values());
-
       sessionArray.forEach((session, index) => {
         const character = characters.get(session.id);
         if (!character) return;
-
-        // 決定目標位置和到達後的動畫
-        let targetType, targetAnim;
-        switch (session.status) {
-          case 'working':
-            targetType = 'workstation';
-            targetAnim = 'working';
-            break;
-          case 'idle':
-            targetType = 'workstation';
-            targetAnim = 'idle';
-            break;
-          case 'open':
-            targetType = 'workstation';
-            targetAnim = 'open';
-            break;
-          default:
-            targetType = 'cell';
-            targetAnim = 'closed';
-        }
-
-        // 設定到達後要播放的動畫
-        character.targetAnimation = targetAnim;
-
-        // 開始移動（moveCharacterTo 會判斷是否需要移動）
-        moveCharacterTo(character, targetType, index);
-
-        // 如果不需要移動（已在目標位置），直接切動畫
-        if (!character.isMoving) {
-          if (character.currentState !== targetAnim) {
-            switchAnimation(character, targetAnim);
-          }
-          character.targetAnimation = null;
+        if (session.status === 'working' || session.status === 'idle' || session.status === 'open') {
+          activateSession(character);
+        } else {
+          deactivateSession(character);
         }
       });
     }
@@ -1490,6 +1460,153 @@
     // ========== 更新狀態欄 ==========
     function updateSessionStatus(text) {
       sessionStatus.textContent = text;
+    }
+
+    // ========== Character Avoidance ==========
+    function avoidCharacters() {
+      const chars = Array.from(characters.values());
+      const MIN_DIST = 0.6;
+      const PUSH_FORCE = 0.02;
+      for (let i = 0; i < chars.length; i++) {
+        for (let j = i + 1; j < chars.length; j++) {
+          const a = chars[i].model.position;
+          const b = chars[j].model.position;
+          const dx = a.x - b.x;
+          const dz = a.z - b.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < MIN_DIST && dist > 0.01) {
+            const nx = dx / dist;
+            const nz = dz / dist;
+            const newAx = a.x + nx * PUSH_FORCE;
+            const newAz = a.z + nz * PUSH_FORCE;
+            const newBx = b.x - nx * PUSH_FORCE;
+            const newBz = b.z - nz * PUSH_FORCE;
+            if (!checkCollision(newAx, newAz)) { a.x = newAx; a.z = newAz; }
+            if (!checkCollision(newBx, newBz)) { b.x = newBx; b.z = newBz; }
+          }
+        }
+      }
+    }
+
+    // ========== Character AI - Roaming FSM ==========
+    function characterAI(character, delta) {
+      if (character.sessionActive) return;
+      if (character.isMoving) return;
+
+      switch (character.aiState) {
+        case 'ROAMING_CHOOSE': {
+          const candidates = POI_TABLE.filter(p => {
+            if (p.occupiedBy !== null) return false;
+            if (p.ownerOnly !== undefined && p.ownerOnly !== character.workstationIndex) return false;
+            if (character.currentPOI && p.id === character.currentPOI.id) return false;
+            return true;
+          });
+          if (candidates.length === 0) {
+            character.aiTimer = 2.0;
+            character.aiState = 'ROAMING_IDLE';
+            return;
+          }
+          const pos = character.model.position;
+          const weighted = candidates.map(p => {
+            const dist = Math.sqrt((p.x - pos.x) ** 2 + (p.z - pos.z) ** 2);
+            return { poi: p, weight: 1 / (1 + dist * 0.3) };
+          });
+          const totalWeight = weighted.reduce((sum, w) => sum + w.weight, 0);
+          let roll = Math.random() * totalWeight;
+          let chosen = weighted[0].poi;
+          for (const w of weighted) {
+            roll -= w.weight;
+            if (roll <= 0) { chosen = w.poi; break; }
+          }
+          chosen.occupiedBy = character;
+          if (character.currentPOI) {
+            character.currentPOI.occupiedBy = null;
+          }
+          character.currentPOI = chosen;
+          character.targetRotation = chosen.facing;
+          character.targetAnimation = null;
+          character.aiState = 'ROAMING_WALK';
+
+          const from = { x: character.model.position.x, z: character.model.position.z };
+          const to = { x: chosen.x, z: chosen.z };
+          const dx = to.x - from.x, dz = to.z - from.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < 0.5) {
+            character.aiState = 'ROAMING_ARRIVE';
+            return;
+          }
+          const path = findPath(from, to);
+          character.path = path;
+          character.pathIndex = 0;
+          character.isMoving = true;
+          switchAnimation(character, 'walking');
+          break;
+        }
+        case 'ROAMING_WALK': {
+          character.aiState = 'ROAMING_ARRIVE';
+          break;
+        }
+        case 'ROAMING_ARRIVE': {
+          const poi = character.currentPOI;
+          if (!poi) { character.aiState = 'ROAMING_CHOOSE'; return; }
+          const animName = poi.anims[Math.floor(Math.random() * poi.anims.length)];
+          character.model.rotation.y = poi.facing;
+          const isLoopOnce = ANIM_LOOP_ONCE.has(animName);
+          switchAnimation(character, animName, { loopOnce: isLoopOnce });
+          const [minDur, maxDur] = poi.duration;
+          character.aiTimer = minDur + Math.random() * (maxDur - minDur);
+          character.aiState = 'ROAMING_IDLE';
+          break;
+        }
+        case 'ROAMING_IDLE': {
+          character.aiTimer -= delta;
+          if (character.aiTimer <= 0) {
+            character.aiState = 'ROAMING_CHOOSE';
+          }
+          break;
+        }
+        case 'RETURNING': {
+          character.aiState = 'WORKING';
+          if (character.currentPOI) {
+            character.currentPOI.occupiedBy = null;
+            character.currentPOI = null;
+          }
+          switchAnimation(character, 'working');
+          break;
+        }
+        case 'WORKING': {
+          break;
+        }
+        default: {
+          character.aiState = 'ROAMING_CHOOSE';
+          break;
+        }
+      }
+    }
+
+    // Trigger character to return to workstation
+    function activateSession(character) {
+      if (character.sessionActive) return;
+      character.sessionActive = true;
+      if (character.currentPOI) {
+        character.currentPOI.occupiedBy = null;
+        character.currentPOI = null;
+      }
+      character.isMoving = false;
+      character.path = [];
+      character.targetAnimation = 'working';
+      moveCharacterTo(character, 'workstation', character.workstationIndex);
+      character.aiState = 'RETURNING';
+      if (!character.isMoving) {
+        switchAnimation(character, 'working');
+        character.aiState = 'WORKING';
+      }
+    }
+
+    function deactivateSession(character) {
+      if (!character.sessionActive) return;
+      character.sessionActive = false;
+      character.aiState = 'ROAMING_CHOOSE';
     }
 
     // ========== 動畫循環 ==========
@@ -1501,6 +1618,7 @@
 
       // 更新所有角色的移動、動畫、骨架同步
       characters.forEach(character => {
+        characterAI(character, delta);
         updateCharacterMovement(character, delta);
         if (character.mixer) {
           character.mixer.update(delta);
@@ -1508,6 +1626,7 @@
         // 每幀把 Mixamo 假人的骨頭姿態複製到原神角色
         syncSkeletonPose(character);
       });
+      avoidCharacters();
 
       controls.update();
       renderer.render(scene, camera);
@@ -1527,18 +1646,26 @@
       loadingText.textContent = 'Demo 準備就緒';
       updateSessionStatus(`Demo 模式 — ${DEMO_AGENTS.length} 個角色`);
 
-      // 等 2 秒後，5 個角色分別走向工作站
+      // 等 2 秒後，角色開始自由漫遊
       setTimeout(() => {
-        for (let i = 0; i < 5; i++) {
-          const character = characters.get(`demo-${DEMO_AGENTS[i]}`);
-          if (!character) continue;
+        initRoamingPOIs();
+        characters.forEach(character => {
+          character.aiState = 'ROAMING_CHOOSE';
+          character.sessionActive = false;
+        });
+        console.log('[Demo] 角色開始自由漫遊');
 
-          // 設定到達工作站後播放的動畫
-          const anims = ['working', 'idle', 'working', 'working', 'idle'];
-          character.targetAnimation = anims[i] || 'idle';
-          moveCharacterTo(character, 'workstation', i);
-        }
-        console.log('[Demo] 角色開始走向工作站');
+        // 20 秒後模擬 Claude session 開始
+        setTimeout(() => {
+          console.log('[Demo] 模擬 Claude session 開始 — 所有人回工作站');
+          characters.forEach(character => activateSession(character));
+        }, 20000);
+
+        // 40 秒後模擬 session 結束
+        setTimeout(() => {
+          console.log('[Demo] 模擬 session 結束 — 重新漫遊');
+          characters.forEach(character => deactivateSession(character));
+        }, 40000);
       }, 2000);
     }
 
@@ -1565,6 +1692,8 @@
         window.scene = scene;
         window.characters = characters;
         window.moveCharacterTo = moveCharacterTo;
+        window.activateSession = activateSession;
+        window.deactivateSession = deactivateSession;
         window.switchAnimation = switchAnimation;
 
         // WebSocket 連接改為手動啟用（console 指令）
