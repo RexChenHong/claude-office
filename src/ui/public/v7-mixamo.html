@@ -640,7 +640,7 @@
           _ikHandTarget.copy(_ikGenshinShoulder).add(handOffset);
 
           // Offset IK target: lift wrist slightly, pull back toward keyboard center
-          _ikHandTarget.y += 0.12;
+          _ikHandTarget.y += 0.20;
           _ikHandTarget.z -= 0.06;
 
           // Solve IK
@@ -659,7 +659,7 @@
           // Hand: copy Mixamo hand rotation with 25% dampening for natural wrist angle
           chain.hand.src.getWorldQuaternion(_worldQ);
           _deltaQ.copy(_worldQ).multiply(chain.hand.srcBindWorldInv);
-          _deltaQ.slerp(_identQ, 0.25); // dampen rotation delta → softer wrist
+          _deltaQ.slerp(_identQ, 0.95); // dampen rotation delta → nearly bind pose wrist
           _worldQ.copy(_deltaQ).multiply(chain.hand.tgtBindWorld);
           if (chain.hand.tgt.parent) {
             chain.hand.tgt.parent.getWorldQuaternion(_parentQ);
