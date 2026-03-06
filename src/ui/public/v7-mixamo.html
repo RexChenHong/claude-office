@@ -85,83 +85,16 @@
       }
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/pathfinding@0.4.18/visual/lib/pathfinding-browser.min.js"></script>
-
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-    const PF = window.PF;
+    import { Pathfinding } from '/lib/three-pathfinding.module.js';
 
-    // ========== 2D 網格尋路（PathFinding.js） ==========
-    const CELL = 0.25;                    // 每格 25cm
-    const GRID_W = Math.ceil(16 / CELL);  // x: -8 ~ 8 = 16m → 64 格
-    const GRID_H = Math.ceil(14 / CELL);  // z: -7 ~ 7 = 14m → 56 格
-    const OX = 8, OZ = 7;                // 偏移量（世界 0,0 = 網格中心）
-
-    function w2g(wx, wz) { return [Math.round((wx + OX) / CELL), Math.round((wz + OZ) / CELL)]; }
-    function g2w(gx, gy) { return { x: gx * CELL - OX, z: gy * CELL - OZ }; }
-
-    function markWalkable(grid, x1, z1, x2, z2, walkable) {
-      const [gx1, gy1] = w2g(Math.min(x1, x2), Math.min(z1, z2));
-      const [gx2, gy2] = w2g(Math.max(x1, x2), Math.max(z1, z2));
-      for (let y = gy1; y <= gy2; y++)
-        for (let x = gx1; x <= gx2; x++)
-          if (y >= 0 && y < GRID_H && x >= 0 && x < GRID_W)
-            grid.setWalkableAt(x, y, walkable);
-    }
-
-    // 建立尋路網格
-    function buildNavGrid() {
-      // PF.Grid(w, h) 預設全部可走 → 先全部設為不可走
-      const grid = new PF.Grid(GRID_W, GRID_H);
-      for (let y = 0; y < GRID_H; y++)
-        for (let x = 0; x < GRID_W; x++)
-          grid.setWalkableAt(x, y, false);
-
-      const W = (x1, z1, x2, z2) => markWalkable(grid, x1, z1, x2, z2, true);  // 可走
-      const B = (x1, z1, x2, z2) => markWalkable(grid, x1, z1, x2, z2, false); // 障礙
-
-      // === 走廊 ===
-      W(-7.5, -2.7, 7.5, 0.7);          // 主走廊
-      W(-1.7, 0.7, 7.5, 3.7);            // 北走廊（牢房前）
-
-      // === 主牆 3 扇門 ===
-      W(-5.9, -3.2, -5.1, -2.7);          // 門 1
-      W(-0.4, -3.2, 0.4, -2.7);           // 門 2
-      W(5.1, -3.2, 5.9, -2.7);            // 門 3
-
-      // === 工作站區（3 區段，玻璃隔板 x=±2.5）===
-      W(-7.5, -3.2, -2.8, -6.2);          // 左區
-      W(-2.2, -3.2, 2.2, -6.2);           // 中區
-      W(2.8, -3.2, 7.5, -6.2);            // 右區
-
-      // === 桌子障礙（只擋桌面，椅子位置 z≈-5.0 需要可走） ===
-      const desks = [-6.5, -4.5, 0, 4.5, 6.5];
-      for (const dx of desks) B(dx - 0.5, -4.3, dx + 0.5, -4.8);
-
-      // === 會議室 ===
-      W(-7.5, 1.3, -2.3, 6.5);            // 內部
-      W(-2.3, 3.6, -1.7, 4.4);            // 門
-
-      // === 牢房（5 間，隔板 x=0,1.6,3.2,4.8,6.4,8）===
-      const cellDoors = [
-        [0.5, 1.1], [2.1, 2.7], [3.7, 4.3], [5.3, 5.9], [6.9, 7.5]
-      ];
-      const cellInteriors = [
-        [0.2, 1.4], [1.8, 3.0], [3.4, 4.6], [5.0, 6.2], [6.6, 7.7]
-      ];
-      for (let i = 0; i < 5; i++) {
-        W(cellDoors[i][0], 3.7, cellDoors[i][1], 4.2);       // 門
-        W(cellInteriors[i][0], 4.2, cellInteriors[i][1], 6.7); // 內部
-      }
-
-      return grid;
-    }
-
-    let pfGrid = null;
-    const pfFinder = new PF.AStarFinder({ allowDiagonal: true, dontCrossCorners: true });
+    // ========== NavMesh 尋路（three-pathfinding） ==========
+    const ZONE = 'office';
+    let pathfinder = null;  // Pathfinding instance（initThreeJS 中初始化）
 
     // ========== 全域變數 ==========
     let scene, camera, renderer, controls;
@@ -858,42 +791,35 @@
       cell: Math.PI          // 面向 -z（面向牢房門/外面，門在北面 z=4）
     };
 
-    // ========== 2D 網格路徑規劃 ==========
-    function clampGrid(x, y) {
-      return [Math.max(0, Math.min(x, GRID_W - 1)), Math.max(0, Math.min(y, GRID_H - 1))];
-    }
-
-    function gridFindPath(from, to) {
-      if (!pfGrid) return [{ x: to.x, z: to.z }];
-      const [sx, sy] = clampGrid(...w2g(from.x, from.z));
-      const [ex, ey] = clampGrid(...w2g(to.x, to.z));
-
-      // 防禦 NaN 或越界
-      if (isNaN(sx) || isNaN(sy) || isNaN(ex) || isNaN(ey)) {
-        console.warn('[PathFind] NaN 座標', { from, to, sx, sy, ex, ey });
-        return [{ x: to.x, z: to.z }];
-      }
-
+    // ========== NavMesh 路徑規劃 ==========
+    function navFindPath(from, to) {
+      if (!pathfinder) return [new THREE.Vector3(to.x, 0, to.z)];
       try {
-        // findPath 會修改 grid，需要 clone
-        const gridClone = pfGrid.clone();
-        // 確保起終點可走（角色可能站在障礙格邊緣）
-        gridClone.setWalkableAt(sx, sy, true);
-        gridClone.setWalkableAt(ex, ey, true);
+        const startVec = new THREE.Vector3(from.x, 0, from.z);
+        const endVec = new THREE.Vector3(to.x, 0, to.z);
+        const groupID = pathfinder.getGroup(ZONE, startVec);
+        if (groupID === null) return [new THREE.Vector3(to.x, 0, to.z)];
 
-        const rawPath = pfFinder.findPath(sx, sy, ex, ey, gridClone);
-        if (!rawPath || rawPath.length === 0) {
-          console.warn('[PathFind] 無法找到路徑', from, to);
-          return [{ x: to.x, z: to.z }];
+        let path = pathfinder.findPath(startVec, endVec, ZONE, groupID);
+
+        // findPath 用嚴格模式（strict=true）匹配三角形內部。
+        // 邊緣位置（如工位椅子）可能在三角形外 → fallback 到最近節點質心
+        if (!path) {
+          const startNode = pathfinder.getClosestNode(startVec, ZONE, groupID);
+          const endNode = pathfinder.getClosestNode(endVec, ZONE, groupID);
+          if (startNode && endNode) {
+            path = pathfinder.findPath(startNode.centroid, endNode.centroid, ZONE, groupID);
+          }
         }
 
-        // 路徑平滑：去除不必要的中間點（PathFinding.js 內建）
-        const smooth = PF.Util.smoothenPath(pfGrid.clone(), rawPath);
-        // 轉回世界座標（跳過起點，只要後續路徑點）
-        return smooth.slice(1).map(([gx, gy]) => g2w(gx, gy));
+        if (!path || path.length === 0) {
+          console.warn('[NavMesh] 無法找到路徑', from, to);
+          return [new THREE.Vector3(to.x, 0, to.z)];
+        }
+        return path;
       } catch (e) {
-        console.warn('[PathFind] 路徑規劃錯誤', e.message, { from, to, sx, sy, ex, ey });
-        return [{ x: to.x, z: to.z }];
+        console.warn('[NavMesh] 路徑規劃錯誤', e.message);
+        return [new THREE.Vector3(to.x, 0, to.z)];
       }
     }
 
@@ -1038,9 +964,19 @@
       controls.target.set(0, 1, -2);
       controls.update();
 
-      // ========== 建立 2D 尋路網格 ==========
-      pfGrid = buildNavGrid();
-      console.log(`[PathFind] 網格建立完成 ${GRID_W}×${GRID_H}`);
+      // ========== 載入 NavMesh ==========
+      try {
+        const navGltf = await new Promise((resolve, reject) => {
+          gltfLoader.load('/models/navmesh.glb', resolve, undefined, reject);
+        });
+        const navMesh = navGltf.scene.children[0];
+        const zone = Pathfinding.createZone(navMesh.geometry);
+        pathfinder = new Pathfinding();
+        pathfinder.setZoneData(ZONE, zone);
+        console.log(`[NavMesh] Zone 建立完成，${zone.groups.length} 個群組，頂點: ${zone.vertices.length}`);
+      } catch (e) {
+        console.error('[NavMesh] 載入失敗，角色將無碰撞約束', e);
+      }
 
       console.log('[Three.js] 場景初始化完成');
     }
@@ -1249,12 +1185,19 @@
         return;
       }
 
-      // 計算路徑
-      const path = gridFindPath(from, to);
+      // 計算路徑（NavMesh A* 尋路）
+      const path = navFindPath(from, to);
 
       character.path = path;
       character.pathIndex = 0;
       character.isMoving = true;
+      character.pinnedPos = null;
+      // 記錄 NavMesh 導航狀態（clampStep 用）
+      if (pathfinder) {
+        const startVec = new THREE.Vector3(from.x, 0, from.z);
+        character.navGroup = pathfinder.getGroup(ZONE, startVec);
+        character.navNode = pathfinder.getClosestNode(startVec, ZONE, character.navGroup);
+      }
       character.targetRotation = FACING[targetType] !== undefined ? FACING[targetType] : 0;
       character.currentPosition = targetType;
 
@@ -1266,8 +1209,9 @@
 
     /**
      * 每幀更新移動中的角色位置。
-     * 直接沿路徑點移動（路徑已由 2D Grid A* 規劃，保證在可行走區域內）。
+     * 路徑由 NavMesh A* 規劃，每步移動用 clampStep 約束在 NavMesh 上。
      */
+    const _clampResult = new THREE.Vector3();
     function updateCharacterMovement(character, delta) {
       if (!character.isMoving || character.path.length === 0) return;
 
@@ -1287,9 +1231,20 @@
       const step = character.moveSpeed * delta;
 
       if (dist <= step) {
-        // 到達當前路徑點
-        pos.x = target.x;
-        pos.z = target.z;
+        // 到達當前路徑點 — clampStep 確保位置在 NavMesh 上
+        if (pathfinder && character.navNode) {
+          const newNode = pathfinder.clampStep(
+            new THREE.Vector3(pos.x, 0, pos.z),
+            new THREE.Vector3(target.x, 0, target.z),
+            character.navNode, ZONE, character.navGroup, _clampResult
+          );
+          character.navNode = newNode;
+          pos.x = _clampResult.x;
+          pos.z = _clampResult.z;
+        } else {
+          pos.x = target.x;
+          pos.z = target.z;
+        }
         character.pathIndex++;
 
         if (character.pathIndex >= character.path.length) {
@@ -1298,7 +1253,6 @@
           character.path = [];
           character.pathIndex = 0;
           character.model.rotation.y = character.targetRotation;
-          // 鎖定位置，防止動畫根運動造成滑動
           character.pinnedPos = { x: pos.x, z: pos.z };
 
           if (character.targetAnimation) {
@@ -1309,9 +1263,23 @@
           console.log(`[Movement] 角色到達目的地`);
         }
       } else {
-        // 直接朝路徑點移動（路徑已保證在 NavMesh 上）
-        pos.x += dx * (step / dist);
-        pos.z += dz * (step / dist);
+        // 每幀移動 — clampStep 強制約束在 NavMesh 邊界內
+        const desiredX = pos.x + dx * (step / dist);
+        const desiredZ = pos.z + dz * (step / dist);
+
+        if (pathfinder && character.navNode) {
+          const newNode = pathfinder.clampStep(
+            new THREE.Vector3(pos.x, 0, pos.z),
+            new THREE.Vector3(desiredX, 0, desiredZ),
+            character.navNode, ZONE, character.navGroup, _clampResult
+          );
+          character.navNode = newNode;
+          pos.x = _clampResult.x;
+          pos.z = _clampResult.z;
+        } else {
+          pos.x = desiredX;
+          pos.z = desiredZ;
+        }
       }
     }
 
@@ -1467,11 +1435,16 @@
             character.aiState = 'ROAMING_ARRIVE';
             return;
           }
-          const path = gridFindPath(from, to);
-    
+          const path = navFindPath(from, to);
           character.path = path;
           character.pathIndex = 0;
           character.isMoving = true;
+          character.pinnedPos = null;
+          if (pathfinder) {
+            const startVec = new THREE.Vector3(from.x, 0, from.z);
+            character.navGroup = pathfinder.getGroup(ZONE, startVec);
+            character.navNode = pathfinder.getClosestNode(startVec, ZONE, character.navGroup);
+          }
           switchAnimation(character, 'walking');
           break;
         }
@@ -1633,8 +1606,8 @@
         window.activateSession = activateSession;
         window.deactivateSession = deactivateSession;
         window.switchAnimation = switchAnimation;
-        window.pathfinding = PF;
-        window.gridFindPath = gridFindPath;
+        window.pathfinder = pathfinder;
+        window.navFindPath = navFindPath;
 
         // WebSocket 連接改為手動啟用（console 指令）
         window.connectLive = () => {
