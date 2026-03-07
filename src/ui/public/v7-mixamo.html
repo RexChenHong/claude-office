@@ -798,116 +798,6 @@
       cell: Math.PI          // 面向 -z（面向牢房門/外面，門在北面 z=4）
     };
 
-    // ========== NavMesh 路徑規劃（Recast/Detour） ==========
-    function navFindPath(from, to) {
-      if (!navMeshQuery) return [{ x: to.x, z: to.z }];
-      try {
-        const { success, path } = navMeshQuery.computePath(
-          { x: from.x, y: 0, z: from.z },
-          { x: to.x, y: 0, z: to.z }
-        );
-        if (!success || !path || path.length === 0) {
-          console.warn('[NavMesh] 無法找到路徑', from, to);
-          return [{ x: to.x, z: to.z }];
-        }
-        // computePath 返回 [{x,y,z}...]，保留 x,z 用於移動
-        return path;
-      } catch (e) {
-        console.warn('[NavMesh] 路徑規劃錯誤', e.message);
-        return [{ x: to.x, z: to.z }];
-      }
-    }
-
-    // ========== 每幀碰撞防護（Layer 2，獨立於 NavMesh 路徑規劃） ==========
-    const COLLISION_WALLS = [
-      // 長牆（z=-3），3 個門洞（x=-5.5, 0, 5.5，門寬 2.0m，可容兩人同時通過）
-      { x1: -8, z1: -3, x2: -6.5, z2: -3 },
-      { x1: -4.5, z1: -3, x2: -1.0, z2: -3 },
-      { x1: 1.0, z1: -3, x2: 4.5, z2: -3 },
-      { x1: 6.5, z1: -3, x2: 8, z2: -3 },
-      // 短牆/玻璃隔間（延伸到南外牆 z=-8，封死底部缺口）
-      { x1: -2.5, z1: -3.15, x2: -2.5, z2: -8 },
-      { x1: 2.5, z1: -3.15, x2: 2.5, z2: -8 },
-      // 南外牆
-      { x1: -8, z1: -8, x2: 8, z2: -8 },
-      // 會議室牆壁
-      { x1: -7.85, z1: 1, x2: -7.85, z2: 6.85 },
-      { x1: -7.85, z1: 6.85, x2: -2, z2: 6.85 },
-      { x1: -7.85, z1: 1, x2: -2, z2: 1 },
-      { x1: -2, z1: 1, x2: -2, z2: 3.0 },
-      { x1: -2, z1: 5.0, x2: -2, z2: 6.85 },
-      // 牢房後牆
-      { x1: 0, z1: 7, x2: 8, z2: 7 },
-      // 牢房左牆
-      { x1: 0, z1: 4, x2: 0, z2: 7 },
-      // 牢房右牆
-      { x1: 8, z1: 4, x2: 8, z2: 7 },
-      // 牢房隔牆（5 間，每間 1.6m）
-      { x1: 1.6, z1: 4, x2: 1.6, z2: 7 },
-      { x1: 3.2, z1: 4, x2: 3.2, z2: 7 },
-      { x1: 4.8, z1: 4, x2: 4.8, z2: 7 },
-      { x1: 6.4, z1: 4, x2: 6.4, z2: 7 },
-      // 工位桌子（只擋前沿，內側留 1.5m 入口讓角色走進椅子區）
-      { x1: -8, z1: -4.7, x2: -4, z2: -4.7 },    // 左桌群前沿（縮短，留入口到 x=-2.5 隔間）
-      { x1: 4, z1: -4.7, x2: 8, z2: -4.7 },      // 右桌群前沿（縮短，留入口到 x=2.5 隔間）
-      { x1: -1.25, z1: -4.7, x2: 1.25, z2: -4.7 },    // 中間桌前沿
-      // 牢房北牆（z=4），每間有 1.2m 寬門洞居中
-      { x1: 0, z1: 4, x2: 0.2, z2: 4 },
-      { x1: 1.4, z1: 4, x2: 1.8, z2: 4 },
-      { x1: 3.0, z1: 4, x2: 3.4, z2: 4 },
-      { x1: 4.6, z1: 4, x2: 5.0, z2: 4 },
-      { x1: 6.2, z1: 4, x2: 6.6, z2: 4 },
-      { x1: 7.8, z1: 4, x2: 8.0, z2: 4 },
-    ];
-
-    function pointToSegmentDistance(px, pz, x1, z1, x2, z2) {
-      const dx = x2 - x1, dz = z2 - z1;
-      const lenSq = dx * dx + dz * dz;
-      if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (pz - z1) ** 2);
-      let t = ((px - x1) * dx + (pz - z1) * dz) / lenSq;
-      t = Math.max(0, Math.min(1, t));
-      const nearX = x1 + t * dx, nearZ = z1 + t * dz;
-      return Math.sqrt((px - nearX) ** 2 + (pz - nearZ) ** 2);
-    }
-
-    function checkCollision(x, z, radius = 0.3) {
-      for (const wall of COLLISION_WALLS) {
-        const dist = pointToSegmentDistance(x, z, wall.x1, wall.z1, wall.x2, wall.z2);
-        if (dist < radius) return true;
-      }
-      return false;
-    }
-
-    function getNearestWallNormal(x, z, radius = 0.3) {
-      let minDist = Infinity;
-      let normalX = 0, normalZ = 0;
-      for (const wall of COLLISION_WALLS) {
-        const dist = pointToSegmentDistance(x, z, wall.x1, wall.z1, wall.x2, wall.z2);
-        if (dist < minDist) {
-          minDist = dist;
-          const wdx = wall.x2 - wall.x1, wdz = wall.z2 - wall.z1;
-          const wlen = Math.sqrt(wdx * wdx + wdz * wdz);
-          if (wlen > 0) {
-            let nx = -wdz / wlen, nz = wdx / wlen;
-            const lenSq = wdx * wdx + wdz * wdz;
-            let t = ((x - wall.x1) * wdx + (z - wall.z1) * wdz) / lenSq;
-            t = Math.max(0, Math.min(1, t));
-            const nearX = wall.x1 + t * wdx, nearZ = wall.z1 + t * wdz;
-            const toCharX = x - nearX, toCharZ = z - nearZ;
-            if (nx * toCharX + nz * toCharZ < 0) { nx = -nx; nz = -nz; }
-            normalX = nx; normalZ = nz;
-          }
-        }
-      }
-      return { x: normalX, z: normalZ, dist: minDist };
-    }
-
-    function wallSlide(posX, posZ, moveX, moveZ) {
-      const wall = getNearestWallNormal(posX + moveX, posZ + moveZ);
-      if (wall.dist >= 0.3) return { x: moveX, z: moveZ };
-      const dot = moveX * wall.x + moveZ * wall.z;
-      return { x: moveX - dot * wall.x, z: moveZ - dot * wall.z };
-    }
 
     // ========== Three.js 初始化 ==========
     async function initThreeJS() {
@@ -1070,7 +960,7 @@
         addBox(0, 1.5, 8, 16, 3, 0.3);      // 北牆
         addBox(-8, 1.5, 0, 0.3, 3, 16);     // 西牆
         addBox(8, 1.5, 0, 0.3, 3, 16);      // 東牆
-        // z=-3 長牆（4 段，留 3 個 2.0m 寬門洞，與 COLLISION_WALLS 對齊）
+        // z=-3 長牆（4 段，留 3 個 2.0m 寬門洞）
         // 門洞: x=-5.5(gap -6.5~-4.5), x=0(gap -1.0~1.0), x=5.5(gap 4.5~6.5)
         addBox(-7.25, 1.5, -3, 1.5, 3, 0.3);   // 段1: x=-8 ~ -6.5
         addBox(-2.75, 1.5, -3, 3.5, 3, 0.3);   // 段2: x=-4.5 ~ -1.0
@@ -1116,7 +1006,9 @@
         if (result.success) {
           navMesh = result.navMesh;
           navMeshQuery = new NavMeshQuery(navMesh);
+          crowd = new Crowd(navMesh, { maxAgents: 10, maxAgentRadius: 0.5 });
           console.log('[NavMesh] Recast 自動生成完成（程式化地板+牆壁）');
+          console.log('[NavMesh] Crowd 初始化完成');
         } else {
           console.error('[NavMesh] 生成失敗:', result.error);
         }
@@ -1245,8 +1137,7 @@
         currentPosition: 'cell',
         currentState: 'idle',
         animations: {},
-        path: [],
-        pathIndex: 0,
+        crowdAgent: null,
         isMoving: false,
         moveSpeed: 2.0,
         walkTime: Math.random() * Math.PI * 2, // random phase offset so characters don't sync
@@ -1262,6 +1153,27 @@
 
       characters.set(sessionId, character);
       character.workstationIndex = index;
+
+      // Add Crowd agent for this character
+      if (crowd) {
+        const cellPos = CELLS[index];
+        character.crowdAgent = crowd.addAgent(
+          { x: cellPos.x, y: 0, z: cellPos.z },
+          {
+            radius: 0.3,
+            height: 1.7,
+            maxAcceleration: 8.0,
+            maxSpeed: 2.0,
+            collisionQueryRange: 2.5,
+            pathOptimizationRange: 10.0,
+            separationWeight: 2.0,
+            updateFlags: 0x01 | 0x02 | 0x04 | 0x08 | 0x10,
+            obstacleAvoidanceType: 3,
+          }
+        );
+        console.log(`[Crowd] Agent added for ${sessionId}`);
+      }
+
       console.log(`[Character] 角色 ${sessionId} (${modelPath}) 載入完成, 骨頭配對: ${bonePairs.length}, 頭髮骨頭: ${hairBindPoses.length}`);
 
       return character;
@@ -1316,13 +1228,9 @@
         ? WORKSTATIONS[targetIndex]
         : CELLS[targetIndex];
 
-      const from = {
-        x: character.model.position.x,
-        z: character.model.position.z
-      };
+      const from = { x: character.model.position.x, z: character.model.position.z };
       const to = { x: targetCoords.x, z: targetCoords.z };
 
-      // 如果已經在目標位置附近（距離 < 0.3），不需要移動
       const dx = to.x - from.x;
       const dz = to.z - from.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
@@ -1331,125 +1239,55 @@
         return;
       }
 
-      // 計算路徑（NavMesh A* 尋路）
-      const path = navFindPath(from, to);
-
-      character.path = path;
-      character.pathIndex = 0;
       character.isMoving = true;
       character.pinnedPos = null;
       character.targetRotation = FACING[targetType] !== undefined ? FACING[targetType] : 0;
       character.currentPosition = targetType;
 
-      // 切換到行走動畫
-      switchAnimation(character, 'walking');
+      // Use Crowd agent for movement
+      if (character.crowdAgent) {
+        character.crowdAgent.requestMoveTarget({ x: to.x, y: 0, z: to.z });
+      }
 
-      console.log(`[Movement] 角色開始移動，路徑點: ${path.length}，距離: ${dist.toFixed(1)}`);
+      switchAnimation(character, 'walking');
+      console.log(`[Movement] 角色開始移動（Crowd），距離: ${dist.toFixed(1)}`);
     }
 
     /**
      * 每幀更新移動中的角色位置。
-     * 路徑由 Recast/Detour A* 規劃，路徑點已保證在 NavMesh 上且最佳化。
+     * 移動由 Recast Crowd 處理，此函數同步 Three.js 模型位置。
      */
     function updateCharacterMovement(character, delta) {
-      if (!character.isMoving || character.path.length === 0) return;
+      if (!character.isMoving || !character.crowdAgent) return;
 
-      const target = character.path[character.pathIndex];
-      const pos = character.model.position;
+      const agentPos = character.crowdAgent.position();
+      const agentVel = character.crowdAgent.velocity();
 
-      // 讓路機制：被設定 yieldTimer 的角色後退讓路
-      if (character.yieldTimer > 0) {
-        character.yieldTimer -= delta;
-        if (target) {
-          const dx = target.x - pos.x, dz = target.z - pos.z;
-          const d = Math.sqrt(dx * dx + dz * dz);
-          if (d > 0.01) {
-            const backStep = character.moveSpeed * delta * 0.5;
-            const bx = pos.x - (dx / d) * backStep;
-            const bz = pos.z - (dz / d) * backStep;
-            if (!checkCollision(bx, bz)) { pos.x = bx; pos.z = bz; }
-          }
-        }
-        return;
+      // Sync Three.js model position from Crowd agent
+      character.model.position.x = agentPos.x;
+      character.model.position.z = agentPos.z;
+
+      // Face movement direction
+      const speed = Math.sqrt(agentVel.x * agentVel.x + agentVel.z * agentVel.z);
+      if (speed > 0.1) {
+        character.model.rotation.y = Math.atan2(agentVel.x, agentVel.z);
       }
 
-      const dx = target.x - pos.x;
-      const dz = target.z - pos.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
+      // Check if arrived (agent velocity near zero = reached target)
+      if (speed < 0.05) {
+        character.isMoving = false;
+        character.model.rotation.y = character.targetRotation;
+        character.pinnedPos = { x: agentPos.x, z: agentPos.z };
 
-      // 面向行進方向
-      if (dist > 0.01) {
-        const angle = Math.atan2(dx, dz);
-        character.model.rotation.y = angle;
-      }
+        // Stop the crowd agent
+        character.crowdAgent.resetMoveTarget();
 
-      const step = character.moveSpeed * delta;
-
-      if (dist <= step) {
-        pos.x = target.x;
-        pos.z = target.z;
-        character.pathIndex++;
-
-        if (character.pathIndex >= character.path.length) {
-          // 到達最終目標
-          character.isMoving = false;
-          character.path = [];
-          character.pathIndex = 0;
-          character.model.rotation.y = character.targetRotation;
-          character.pinnedPos = { x: pos.x, z: pos.z };
-
-          if (character.targetAnimation) {
-            switchAnimation(character, character.targetAnimation);
-            character.targetAnimation = null;
-          }
-
-          console.log(`[Movement] 角色到達目的地`);
-        }
-      } else {
-        // 計算下一步位置，並用碰撞系統防止穿牆
-        const moveX = dx * (step / dist);
-        const moveZ = dz * (step / dist);
-        const newX = pos.x + moveX;
-        const newZ = pos.z + moveZ;
-        let moved = false;
-        if (!checkCollision(newX, newZ)) {
-          pos.x = newX;
-          pos.z = newZ;
-          moved = true;
-        } else {
-          // 碰到牆：嘗試 wall sliding
-          const slide = wallSlide(pos.x, pos.z, moveX, moveZ);
-          const slideX = pos.x + slide.x;
-          const slideZ = pos.z + slide.z;
-          if (!checkCollision(slideX, slideZ)) {
-            pos.x = slideX;
-            pos.z = slideZ;
-            moved = true;
-          } else if (!checkCollision(newX, pos.z)) {
-            pos.x = newX;
-            moved = true;
-          } else if (!checkCollision(pos.x, newZ)) {
-            pos.z = newZ;
-            moved = true;
-          }
+        if (character.targetAnimation) {
+          switchAnimation(character, character.targetAnimation);
+          character.targetAnimation = null;
         }
 
-        if (moved) {
-          character.stuckTimer = 0;
-        } else {
-          // 完全卡住，快速放棄重選 POI
-          character.stuckTimer = (character.stuckTimer || 0) + delta;
-          if (character.stuckTimer > 0.8) {
-            console.log(`[Movement] 角色卡住，放棄路徑`);
-            character.isMoving = false;
-            character.path = [];
-            character.pathIndex = 0;
-            character.stuckTimer = 0;
-            if (character.aiState === 'ROAMING_WALK') {
-              character.aiState = 'ROAMING_CHOOSE';
-            }
-          }
-        }
+        console.log(`[Movement] 角色到達目的地（Crowd）`);
       }
     }
 
@@ -1528,52 +1366,6 @@
       sessionStatus.textContent = text;
     }
 
-    // ========== Character Avoidance ==========
-    function avoidCharacters() {
-      const chars = Array.from(characters.values());
-      const MIN_DIST = 0.6;
-      const PUSH_FORCE = 0.02;
-      for (let i = 0; i < chars.length; i++) {
-        for (let j = i + 1; j < chars.length; j++) {
-          // 只對移動中的角色做推開，坐下的角色不推
-          if (!chars[i].isMoving && !chars[j].isMoving) continue;
-          const a = chars[i].model.position;
-          const b = chars[j].model.position;
-          const dx = a.x - b.x;
-          const dz = a.z - b.z;
-          const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < MIN_DIST && dist > 0.01) {
-            // 兩人都在移動 → 離目的地較遠的讓路 0.5 秒
-            if (chars[i].isMoving && chars[j].isMoving) {
-              const iTarget = chars[i].path[chars[i].path.length - 1];
-              const jTarget = chars[j].path[chars[j].path.length - 1];
-              if (iTarget && jTarget) {
-                const iRemain = Math.hypot(a.x - iTarget.x, a.z - iTarget.z);
-                const jRemain = Math.hypot(b.x - jTarget.x, b.z - jTarget.z);
-                if (iRemain > jRemain) {
-                  chars[i].yieldTimer = 0.5;
-                } else {
-                  chars[j].yieldTimer = 0.5;
-                }
-              }
-            }
-            const nx = dx / dist;
-            const nz = dz / dist;
-            if (chars[i].isMoving) {
-              const newAx = a.x + nx * PUSH_FORCE;
-              const newAz = a.z + nz * PUSH_FORCE;
-              if (!checkCollision(newAx, newAz)) { a.x = newAx; a.z = newAz; }
-            }
-            if (chars[j].isMoving) {
-              const newBx = b.x - nx * PUSH_FORCE;
-              const newBz = b.z - nz * PUSH_FORCE;
-              if (!checkCollision(newBx, newBz)) { b.x = newBx; b.z = newBz; }
-            }
-          }
-        }
-      }
-    }
-
     // ========== Character AI - Roaming FSM ==========
     function characterAI(character, delta) {
       if (character.sessionActive) return;
@@ -1621,11 +1413,11 @@
             character.aiState = 'ROAMING_ARRIVE';
             return;
           }
-          const path = navFindPath(from, to);
-          character.path = path;
-          character.pathIndex = 0;
           character.isMoving = true;
           character.pinnedPos = null;
+          if (character.crowdAgent) {
+            character.crowdAgent.requestMoveTarget({ x: chosen.x, y: 0, z: chosen.z });
+          }
           switchAnimation(character, 'walking');
           break;
         }
@@ -1636,6 +1428,9 @@
         case 'ROAMING_ARRIVE': {
           const poi = character.currentPOI;
           if (!poi) { character.aiState = 'ROAMING_CHOOSE'; return; }
+          if (character.crowdAgent) {
+            character.crowdAgent.resetMoveTarget();
+          }
           const animName = poi.anims[Math.floor(Math.random() * poi.anims.length)];
           character.model.rotation.y = poi.facing;
           const isLoopOnce = ANIM_LOOP_ONCE.has(animName);
@@ -1680,7 +1475,6 @@
         character.currentPOI = null;
       }
       character.isMoving = false;
-      character.path = [];
       character.targetAnimation = 'working';
       moveCharacterTo(character, 'workstation', character.workstationIndex);
       character.aiState = 'RETURNING';
@@ -1703,6 +1497,11 @@
 
       const delta = clock.getDelta();
 
+      // Step Crowd simulation (handles pathfinding, collision, avoidance)
+      if (crowd) {
+        crowd.update(delta);
+      }
+
       // 更新所有角色的移動、動畫、骨架同步
       characters.forEach(character => {
         characterAI(character, delta);
@@ -1718,7 +1517,6 @@
           character.model.position.z = character.pinnedPos.z;
         }
       });
-      avoidCharacters();
 
       controls.update();
       renderer.render(scene, camera);
@@ -1789,7 +1587,7 @@
         window.switchAnimation = switchAnimation;
         window.navMesh = navMesh;
         window.navMeshQuery = navMeshQuery;
-        window.navFindPath = navFindPath;
+        window.crowd = crowd;
 
         // WebSocket 連接改為手動啟用（console 指令）
         window.connectLive = () => {
