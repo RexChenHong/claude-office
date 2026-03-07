@@ -1268,6 +1268,69 @@
       console.log('[Animation] 切換到: ' + animationName);
     }
 
+    // ========== Nameplate System ==========
+    const STATUS_COLORS = {
+      working: '#ff4444',  // Red
+      idle: '#ffcc00',     // Yellow
+      open: '#ffffff',     // White
+    };
+
+    function extractProjectName(project) {
+      if (!project) return '';
+      const parts = project.replace(/^-/, '').split('-');
+      const skip = ['mnt', 'e', 'drive'];
+      const meaningful = [];
+      let skipping = true;
+      for (const p of parts) {
+        if (skipping && skip.includes(p)) continue;
+        skipping = false;
+        meaningful.push(p);
+      }
+      return meaningful.join('-') || project;
+    }
+
+    function renderNameplateCanvas(ctx, text, color) {
+      ctx.clearRect(0, 0, 256, 64);
+      ctx.font = 'bold 28px Arial';
+      const measured = ctx.measureText(text).width;
+      const padX = 16;
+      const bgWidth = Math.min(measured + padX * 2, 256);
+      const bgX = (256 - bgWidth) / 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.roundRect(bgX, 8, bgWidth, 48, 8);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 128, 32);
+    }
+
+    function updateNameplate(character, project, status) {
+      const text = project ? extractProjectName(project) : `demo-${DEMO_AGENTS[character.workstationIndex]}`;
+      const color = status ? (STATUS_COLORS[status] || '#ffffff') : '#888888';
+
+      if (!character.nameplate) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        renderNameplateCanvas(ctx, text, color);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.2, 0.3, 1);
+        sprite.position.set(0, 2.0, 0);
+        character.model.add(sprite);
+        character.nameplate = { sprite, canvas, ctx, texture };
+      } else {
+        const np = character.nameplate;
+        renderNameplateCanvas(np.ctx, text, color);
+        np.texture.needsUpdate = true;
+      }
+    }
+
     // ========== 移動角色 ==========
     function moveCharacterTo(character, targetType, targetIndex) {
       const targetCoords = targetType === 'workstation'
@@ -1353,8 +1416,22 @@
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'sync') {
-          handleSessionSync(data.sessions);
+        switch (data.type) {
+          case 'sync':
+            handleSessionSync(data.sessions);
+            break;
+          case 'session_open':
+            handleSessionOpen(data.sessionId, data.project);
+            break;
+          case 'session_working':
+            handleSessionWorking(data.sessionId);
+            break;
+          case 'session_idle':
+            handleSessionIdle(data.sessionId);
+            break;
+          case 'session_close':
+            handleSessionClose(data.sessionId);
+            break;
         }
       };
 
@@ -1398,16 +1475,96 @@
 
     // ========== 更新角色狀態 ==========
     function updateCharacterStates() {
-      const sessionArray = Array.from(sessions.values());
-      sessionArray.forEach((session, index) => {
-        const character = characters.get(session.id);
-        if (!character) return;
-        if (session.status === 'working' || session.status === 'idle' || session.status === 'open') {
-          activateSession(character);
-        } else {
-          deactivateSession(character);
+      for (const [sessionId, session] of sessions) {
+        switch (session.status) {
+          case 'working':
+            handleSessionWorking(sessionId);
+            break;
+          case 'idle':
+          case 'open':
+            handleSessionIdle(sessionId);
+            break;
         }
-      });
+      }
+    }
+
+    // ========== Individual Session Event Handlers ==========
+    function handleSessionOpen(sessionId, project) {
+      if (sessions.has(sessionId)) return;
+      if (sessions.size >= 5) return;
+
+      const session = { id: sessionId, project: project, status: 'open' };
+      sessions.set(sessionId, session);
+
+      // Assign first available demo character to this session
+      let character = null;
+      for (const [key, char] of characters) {
+        if (key.startsWith('demo-') && !char.boundSessionId) {
+          characters.delete(key);
+          characters.set(sessionId, char);
+          char.boundSessionId = sessionId;
+          character = char;
+          break;
+        }
+      }
+
+      if (character) {
+        activateSession(character);
+        updateNameplate(character, project, 'open');
+      }
+
+      updateSessionStatus(`${sessions.size} 個 Session 活躍`);
+      console.log(`[Session] Open: ${sessionId} (${project})`);
+    }
+
+    function handleSessionWorking(sessionId) {
+      const session = sessions.get(sessionId);
+      if (!session) return;
+      session.status = 'working';
+
+      const character = characters.get(sessionId);
+      if (character) {
+        if (!character.sessionActive) activateSession(character);
+        if (character.currentState !== 'working' && character.aiState === 'WORKING') {
+          switchAnimation(character, 'working');
+        }
+        updateNameplate(character, session.project, 'working');
+      }
+    }
+
+    function handleSessionIdle(sessionId) {
+      const session = sessions.get(sessionId);
+      if (!session) return;
+      session.status = 'idle';
+
+      const character = characters.get(sessionId);
+      if (character) {
+        if (!character.sessionActive) activateSession(character);
+        if (character.aiState === 'WORKING') {
+          switchAnimation(character, 'sitting-idle');
+        }
+        updateNameplate(character, session.project, 'idle');
+      }
+    }
+
+    function handleSessionClose(sessionId) {
+      const session = sessions.get(sessionId);
+      if (!session) return;
+
+      const character = characters.get(sessionId);
+      if (character) {
+        deactivateSession(character);
+        updateNameplate(character, null, null);
+        const agentIndex = character.workstationIndex;
+        const demoKey = `demo-${DEMO_AGENTS[agentIndex]}`;
+        characters.delete(sessionId);
+        characters.set(demoKey, character);
+        character.boundSessionId = null;
+      }
+
+      sessions.delete(sessionId);
+      updateSessionStatus(sessions.size > 0 ? `${sessions.size} 個 Session 活躍` : 'Demo 模式');
+      console.log(`[Session] Close: ${sessionId}`);
     }
 
     // ========== 更新狀態欄 ==========
@@ -1614,6 +1771,10 @@
         characters.forEach(character => {
           character.aiState = 'ROAMING_CHOOSE';
           character.sessionActive = false;
+        });
+        // Add nameplates to demo characters
+        characters.forEach((character) => {
+          updateNameplate(character, null, null);
         });
         console.log('[Demo] 角色開始自由漫遊（輸入 activateSession / deactivateSession 控制）');
       }, 2000);
