@@ -116,6 +116,7 @@
     // 工作站座標（Blender Y-forward → Three.js: x=x, y=0, z=-blender_y）
     // 椅子 GLB 原始 z=-6.375，前移 0.35m 讓手臂搆到鍵盤
     const CHAIR_Z_OFFSET = 0.35;
+    const SEAT_HEIGHT = 0.44; // 椅面高度（從場景量測），補償坐姿動畫 hips 下沉
     const WORKSTATIONS = [
       { x: -6.5, z: -6.375 + CHAIR_Z_OFFSET, rot: 0 },
       { x: -4.5, z: -6.375 + CHAIR_Z_OFFSET, rot: 0 },
@@ -804,7 +805,7 @@
       if (character.hipsPair) {
         character.hipsPair.src.getWorldPosition(_tmpPos);
         const deltaY = _tmpPos.y - character.srcHipsBindY;
-        character.model.position.y = deltaY;
+        character.model.position.y = deltaY + character.seatHeightOffset;
       }
     }
 
@@ -1195,6 +1196,7 @@
         currentPOI: null,
         workstationIndex: -1,
         sessionActive: false,
+        seatHeightOffset: 0, // 坐下時的椅面高度補償
       };
 
       characters.set(sessionId, character);
@@ -1395,6 +1397,11 @@
 
         // Stop the crowd agent
         character.crowdAgent.resetMoveTarget();
+
+        // 到達工作站時設定椅面補償（坐姿動畫會讓 hips 下沉）
+        if (character.sessionActive) {
+          character.seatHeightOffset = SEAT_HEIGHT;
+        }
 
         if (character.targetAnimation) {
           switchAnimation(character, character.targetAnimation);
@@ -1609,6 +1616,7 @@
 
       switch (character.aiState) {
         case 'ROAMING_CHOOSE': {
+          character.seatHeightOffset = 0;
           const candidates = POI_TABLE.filter(p => {
             if (p.occupiedBy !== null) return false;
             if (p.ownerOnly !== undefined && p.ownerOnly !== character.workstationIndex) return false;
@@ -1671,6 +1679,7 @@
           character.model.rotation.y = poi.facing;
 
           if (poi.type === 'sitting') {
+            character.seatHeightOffset = SEAT_HEIGHT;
             // Play sit-down transition animation first
             switchAnimation(character, 'sitting', { loopOnce: true });
             character.aiState = 'SITTING_TRANSITION';
@@ -1738,6 +1747,7 @@
       moveCharacterTo(character, 'workstation', character.workstationIndex);
       character.aiState = 'RETURNING';
       if (!character.isMoving) {
+        character.seatHeightOffset = SEAT_HEIGHT;
         switchAnimation(character, 'working');
         character.aiState = 'WORKING';
       }
@@ -1746,6 +1756,7 @@
     function deactivateSession(character) {
       if (!character.sessionActive) return;
       character.sessionActive = false;
+      character.seatHeightOffset = 0;
       character.aiState = 'ROAMING_CHOOSE';
     }
 
