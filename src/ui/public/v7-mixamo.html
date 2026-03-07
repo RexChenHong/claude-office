@@ -1344,8 +1344,6 @@
 
     // ========== WebSocket 連接 ==========
     function connectWebSocket() {
-      loadingText.textContent = '連接 Session Monitor...';
-
       ws = new WebSocket(`ws://${location.hostname}:8053`);
 
       ws.onopen = () => {
@@ -1651,13 +1649,10 @@
         window.navMeshQuery = navMeshQuery;
         window.crowd = crowd;
 
-        // WebSocket 連接改為手動啟用（console 指令）
-        window.connectLive = () => {
-          console.log('[WS] 手動連接 Session Monitor...');
-          connectWebSocket();
-        };
-        console.log('[V7-Mixamo] Demo 模式啟動完成！');
-        console.log('[V7-Mixamo] 輸入 connectLive() 可連接 Session Monitor');
+        // Auto-connect to Session Monitor (fallback to demo mode if unavailable)
+        console.log('[V7-Mixamo] 自動連接 Session Monitor...');
+        connectWebSocket();
+        console.log('[V7-Mixamo] 啟動完成（Live 模式自動連接中）');
       } catch (error) {
         console.error('[V7-Mixamo] 啟動失敗:', error);
         loadingText.textContent = `錯誤: ${error.message}`;
