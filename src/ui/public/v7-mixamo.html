@@ -177,15 +177,32 @@
 
     // Points of Interest for character roaming
     const POI_TABLE = [
-      { id: 'corridor-w', x: -5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'looking-behind'], duration: [8, 15], facing: 0 },
-      { id: 'corridor-c', x: 0, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'hip-hop-dancing', 'rumba-dancing'], duration: [8, 15], facing: 0 },
-      { id: 'corridor-e', x: 5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking-behind', 'batter-on-deck'], duration: [8, 15], facing: Math.PI },
-      { id: 'window-w', x: -7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'defeated', 'angry'], duration: [10, 20], facing: Math.PI / 2 },
-      { id: 'window-e', x: 7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'looking-behind', 'defeated'], duration: [10, 20], facing: -Math.PI / 2 },
-      { id: 'corridor-nw', x: -5, z: 2, type: 'standing', anims: ['standing-idle', 'looking', 'arm-stretching'], duration: [10, 20], facing: Math.PI },
-      { id: 'corridor-ne', x: 5, z: 2, type: 'standing', anims: ['standing-idle', 'looking-behind', 'arm-stretching'], duration: [10, 20], facing: 0 },
+      // 走廊（standing）
+      { id: 'corridor-w', x: -5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'looking-behind'], duration: [5, 12], facing: 0 },
+      { id: 'corridor-c', x: 0, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking', 'hip-hop-dancing', 'rumba-dancing'], duration: [5, 12], facing: 0 },
+      { id: 'corridor-e', x: 5, z: 0, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking-behind', 'batter-on-deck'], duration: [5, 12], facing: Math.PI },
+      { id: 'window-w', x: -7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'defeated', 'angry'], duration: [5, 15], facing: Math.PI / 2 },
+      { id: 'window-e', x: 7, z: 0, type: 'standing', anims: ['standing-idle', 'looking', 'looking-behind', 'defeated'], duration: [5, 15], facing: -Math.PI / 2 },
+      { id: 'corridor-nw', x: -5, z: 2, type: 'standing', anims: ['standing-idle', 'looking', 'arm-stretching'], duration: [5, 12], facing: Math.PI },
+      { id: 'corridor-ne', x: 5, z: 2, type: 'standing', anims: ['standing-idle', 'looking-behind', 'arm-stretching'], duration: [5, 12], facing: 0 },
       { id: 'wander-1', x: -3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: 0 },
       { id: 'wander-2', x: 3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: Math.PI },
+      // 會議室椅子（sitting）— North 排面朝桌子
+      { id: 'meeting-n0', x: -5.4, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'meeting-n1', x: -4.75, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'meeting-n2', x: -4.1, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      // 會議室椅子（sitting）— South 排面朝桌子
+      { id: 'meeting-s0', x: -5.4, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'meeting-s1', x: -4.75, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'meeting-s2', x: -4.1, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      // 牢房沙發（sitting）— 面朝門口（朝北 = 朝 -z 方向）
+      { id: 'cell-sofa-1', x: 0.8, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'cell-sofa-2', x: 2.4, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'cell-sofa-3', x: 4.0, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'cell-sofa-4', x: 5.6, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'cell-sofa-5', x: 7.2, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      // 會議室內站立
+      { id: 'meeting-stand', x: -5, z: 4, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking'], duration: [5, 12], facing: 0 },
     ];
 
     function initRoamingPOIs() {
@@ -195,7 +212,7 @@
         if (!ws) return;
         POI_TABLE.push({
           id: `own-desk-${i}`, x: ws.x, z: ws.z + 0.1, type: 'sitting',
-          anims: ['sitting-idle', 'sitting-laughing'], duration: [10, 20], facing: 0,
+          anims: ['sitting-idle', 'sitting-laughing'], duration: [5, 12], facing: 0,
           ownerOnly: char.workstationIndex
         });
         if (i > 0) {
@@ -1240,6 +1257,7 @@
       }
 
       character.isMoving = true;
+      character.moveTarget = { x: to.x, z: to.z }; // 記錄目標位置，用距離判斷到達
       character.pinnedPos = null;
       character.targetRotation = FACING[targetType] !== undefined ? FACING[targetType] : 0;
       character.currentPosition = targetType;
@@ -1273,8 +1291,12 @@
         character.model.rotation.y = Math.atan2(agentVel.x, agentVel.z);
       }
 
-      // Check if arrived (agent velocity near zero = reached target)
-      if (speed < 0.05) {
+      // Check if arrived: distance to target < 0.5m
+      const target = character.moveTarget;
+      const distToTarget = target
+        ? Math.sqrt((agentPos.x - target.x) ** 2 + (agentPos.z - target.z) ** 2)
+        : 0;
+      if (distToTarget < 0.5) {
         character.isMoving = false;
         character.model.rotation.y = character.targetRotation;
         character.pinnedPos = { x: agentPos.x, z: agentPos.z };
@@ -1414,6 +1436,7 @@
             return;
           }
           character.isMoving = true;
+          character.moveTarget = { x: chosen.x, z: chosen.z };
           character.pinnedPos = null;
           if (character.crowdAgent) {
             character.crowdAgent.requestMoveTarget({ x: chosen.x, y: 0, z: chosen.z });
@@ -1536,26 +1559,14 @@
       loadingText.textContent = 'Demo 準備就緒';
       updateSessionStatus(`Demo 模式 — ${DEMO_AGENTS.length} 個角色`);
 
-      // 等 2 秒後，角色開始自由漫遊
+      // 等 2 秒後，角色開始自由漫遊（純漫遊模式，等 WebSocket 串接後才回工位）
       setTimeout(() => {
         initRoamingPOIs();
         characters.forEach(character => {
           character.aiState = 'ROAMING_CHOOSE';
           character.sessionActive = false;
         });
-        console.log('[Demo] 角色開始自由漫遊');
-
-        // 20 秒後模擬 Claude session 開始
-        setTimeout(() => {
-          console.log('[Demo] 模擬 Claude session 開始 — 所有人回工作站');
-          characters.forEach(character => activateSession(character));
-        }, 20000);
-
-        // 40 秒後模擬 session 結束
-        setTimeout(() => {
-          console.log('[Demo] 模擬 session 結束 — 重新漫遊');
-          characters.forEach(character => deactivateSession(character));
-        }, 40000);
+        console.log('[Demo] 角色開始自由漫遊（輸入 activateSession / deactivateSession 控制）');
       }, 2000);
     }
 
