@@ -1362,6 +1362,12 @@
     function updateCharacterMovement(character, delta) {
       if (!character.isMoving || character.path.length === 0) return;
 
+      // 讓路機制：被設定 yieldTimer 的角色暫停移動
+      if (character.yieldTimer > 0) {
+        character.yieldTimer -= delta;
+        return;
+      }
+
       const target = character.path[character.pathIndex];
       const pos = character.model.position;
 
@@ -1535,6 +1541,20 @@
           const dz = a.z - b.z;
           const dist = Math.sqrt(dx * dx + dz * dz);
           if (dist < MIN_DIST && dist > 0.01) {
+            // 兩人都在移動 → 離目的地較遠的讓路 0.5 秒
+            if (chars[i].isMoving && chars[j].isMoving) {
+              const iTarget = chars[i].path[chars[i].path.length - 1];
+              const jTarget = chars[j].path[chars[j].path.length - 1];
+              if (iTarget && jTarget) {
+                const iRemain = Math.hypot(a.x - iTarget.x, a.z - iTarget.z);
+                const jRemain = Math.hypot(b.x - jTarget.x, b.z - jTarget.z);
+                if (iRemain > jRemain) {
+                  chars[i].yieldTimer = 0.5;
+                } else {
+                  chars[j].yieldTimer = 0.5;
+                }
+              }
+            }
             const nx = dx / dist;
             const nz = dz / dist;
             if (chars[i].isMoving) {
