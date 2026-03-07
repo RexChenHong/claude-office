@@ -1401,6 +1401,17 @@
           character.targetAnimation = null;
         }
 
+        // Apply pending session status animation
+        if (character.pendingSessionStatus) {
+          const pending = character.pendingSessionStatus;
+          character.pendingSessionStatus = null;
+          if (pending === 'working') {
+            switchAnimation(character, 'working');
+          } else if (pending === 'idle') {
+            switchAnimation(character, 'sitting-idle');
+          }
+        }
+
         console.log(`[Movement] 角色到達目的地（Crowd）`);
       }
     }
@@ -1538,7 +1549,10 @@
       const character = characters.get(sessionId);
       if (character) {
         if (!character.sessionActive) activateSession(character);
-        if (character.currentState !== 'working' && character.aiState === 'WORKING') {
+        if (character.isMoving) {
+          // Still walking to workstation - defer animation switch
+          character.pendingSessionStatus = 'working';
+        } else if (character.aiState === 'WORKING') {
           switchAnimation(character, 'working');
         }
         updateNameplate(character, session.project, 'working');
@@ -1553,7 +1567,10 @@
       const character = characters.get(sessionId);
       if (character) {
         if (!character.sessionActive) activateSession(character);
-        if (character.aiState === 'WORKING') {
+        if (character.isMoving) {
+          // Still walking to workstation - defer animation switch
+          character.pendingSessionStatus = 'idle';
+        } else if (character.aiState === 'WORKING') {
           switchAnimation(character, 'sitting-idle');
         }
         updateNameplate(character, session.project, 'idle');
