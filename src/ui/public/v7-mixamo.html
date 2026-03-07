@@ -820,11 +820,11 @@
 
     // ========== 每幀碰撞防護（Layer 2，獨立於 NavMesh 路徑規劃） ==========
     const COLLISION_WALLS = [
-      // 長牆（z=-3），3 個門洞（x=-5.5, 0, 5.5，門寬 1.2m）
-      { x1: -8, z1: -3, x2: -6.1, z2: -3 },
-      { x1: -4.9, z1: -3, x2: -0.6, z2: -3 },
-      { x1: 0.6, z1: -3, x2: 4.9, z2: -3 },
-      { x1: 6.1, z1: -3, x2: 8, z2: -3 },
+      // 長牆（z=-3），3 個門洞（x=-5.5, 0, 5.5，門寬 2.0m，可容兩人同時通過）
+      { x1: -8, z1: -3, x2: -6.5, z2: -3 },
+      { x1: -4.5, z1: -3, x2: -1.0, z2: -3 },
+      { x1: 1.0, z1: -3, x2: 4.5, z2: -3 },
+      { x1: 6.5, z1: -3, x2: 8, z2: -3 },
       // 短牆/玻璃隔間（延伸到南外牆 z=-8，封死底部缺口）
       { x1: -2.5, z1: -3.15, x2: -2.5, z2: -8 },
       { x1: 2.5, z1: -3.15, x2: 2.5, z2: -8 },
@@ -834,8 +834,8 @@
       { x1: -7.85, z1: 1, x2: -7.85, z2: 6.85 },
       { x1: -7.85, z1: 6.85, x2: -2, z2: 6.85 },
       { x1: -7.85, z1: 1, x2: -2, z2: 1 },
-      { x1: -2, z1: 1, x2: -2, z2: 3.4 },
-      { x1: -2, z1: 4.6, x2: -2, z2: 6.85 },
+      { x1: -2, z1: 1, x2: -2, z2: 3.0 },
+      { x1: -2, z1: 5.0, x2: -2, z2: 6.85 },
       // 牢房後牆
       { x1: 0, z1: 7, x2: 8, z2: 7 },
       // 牢房左牆
@@ -1070,12 +1070,12 @@
         addBox(0, 1.5, 8, 16, 3, 0.3);      // 北牆
         addBox(-8, 1.5, 0, 0.3, 3, 16);     // 西牆
         addBox(8, 1.5, 0, 0.3, 3, 16);      // 東牆
-        // z=-3 長牆（4 段，留 3 個門洞，與 COLLISION_WALLS 對齊）
-        // 門洞: x=-5.5(gap -6.1~-4.9), x=0(gap -0.6~0.6), x=5.5(gap 4.9~6.1)
-        addBox(-7.05, 1.5, -3, 1.9, 3, 0.3);   // 段1: x=-8 ~ -6.1
-        addBox(-2.75, 1.5, -3, 4.3, 3, 0.3);   // 段2: x=-4.9 ~ -0.6
-        addBox(2.75, 1.5, -3, 4.3, 3, 0.3);    // 段3: x=0.6 ~ 4.9
-        addBox(7.05, 1.5, -3, 1.9, 3, 0.3);    // 段4: x=6.1 ~ 8
+        // z=-3 長牆（4 段，留 3 個 2.0m 寬門洞，與 COLLISION_WALLS 對齊）
+        // 門洞: x=-5.5(gap -6.5~-4.5), x=0(gap -1.0~1.0), x=5.5(gap 4.5~6.5)
+        addBox(-7.25, 1.5, -3, 1.5, 3, 0.3);   // 段1: x=-8 ~ -6.5
+        addBox(-2.75, 1.5, -3, 3.5, 3, 0.3);   // 段2: x=-4.5 ~ -1.0
+        addBox(2.75, 1.5, -3, 3.5, 3, 0.3);    // 段3: x=1.0 ~ 4.5
+        addBox(7.25, 1.5, -3, 1.5, 3, 0.3);    // 段4: x=6.5 ~ 8
         // 工位區桌子（只蓋桌面，不蓋椅子區域）
         addBox(-6, 0.5, -4.7, 4, 1, 0.3);     // 左側桌群前沿 x:-8~-4（留 1.5m 入口）
         addBox(6, 0.5, -4.7, 4, 1, 0.3);      // 右側桌群前沿 x:4~8（留 1.5m 入口）
@@ -1086,8 +1086,8 @@
         // 會議室牆壁
         addBox(-4.925, 1.5, 1, 5.85, 3, 0.3);      // 南牆 z=1, x: -7.85 ~ -2
         addBox(-4.925, 1.5, 6.85, 5.85, 3, 0.3);   // 北牆 z=6.85, x: -7.85 ~ -2
-        addBox(-2, 1.5, 2.2, 0.3, 3, 2.4);         // 東牆下段 x=-2, z: 1 ~ 3.4
-        addBox(-2, 1.5, 5.725, 0.3, 3, 2.25);      // 東牆上段 x=-2, z: 4.6 ~ 6.85
+        addBox(-2, 1.5, 2.0, 0.3, 3, 2.0);          // 東牆下段 x=-2, z: 1 ~ 3.0
+        addBox(-2, 1.5, 5.925, 0.3, 3, 1.85);      // 東牆上段 x=-2, z: 5.0 ~ 6.85
         // 牢房隔牆
         addBox(1.6, 1.5, 5.5, 0.3, 3, 3);          // 隔牆1 x=1.6, z: 4 ~ 7
         addBox(3.2, 1.5, 5.5, 0.3, 3, 3);          // 隔牆2 x=3.2, z: 4 ~ 7
@@ -1354,14 +1354,24 @@
     function updateCharacterMovement(character, delta) {
       if (!character.isMoving || character.path.length === 0) return;
 
-      // 讓路機制：被設定 yieldTimer 的角色暫停移動
-      if (character.yieldTimer > 0) {
-        character.yieldTimer -= delta;
-        return;
-      }
-
       const target = character.path[character.pathIndex];
       const pos = character.model.position;
+
+      // 讓路機制：被設定 yieldTimer 的角色後退讓路
+      if (character.yieldTimer > 0) {
+        character.yieldTimer -= delta;
+        if (target) {
+          const dx = target.x - pos.x, dz = target.z - pos.z;
+          const d = Math.sqrt(dx * dx + dz * dz);
+          if (d > 0.01) {
+            const backStep = character.moveSpeed * delta * 0.5;
+            const bx = pos.x - (dx / d) * backStep;
+            const bz = pos.z - (dz / d) * backStep;
+            if (!checkCollision(bx, bz)) { pos.x = bx; pos.z = bz; }
+          }
+        }
+        return;
+      }
 
       const dx = target.x - pos.x;
       const dz = target.z - pos.z;
