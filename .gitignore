@@ -44,3 +44,9 @@ src/ui/public/actorcore/
 
 # Large Blender source files
 blender/*.blend
+
+# Reference models (too large for git)
+assets/characters/3d/realistic_female_character_for_mixamo.fbx
+
+# Blender MCP addon (external tool)
+blender-mcp-addon.py
