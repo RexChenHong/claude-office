@@ -188,19 +188,19 @@
       { id: 'wander-1', x: -3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: 0 },
       { id: 'wander-2', x: 3, z: 1, type: 'standing', anims: ['walk-circle', 'drunk-walk'], duration: [5, 10], facing: Math.PI },
       // 會議室椅子（sitting）— North 排面朝桌子
-      { id: 'meeting-n0', x: -5.4, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
-      { id: 'meeting-n1', x: -4.75, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
-      { id: 'meeting-n2', x: -4.1, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'meeting-n0', x: -5.4, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'meeting-n1', x: -4.75, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'meeting-n2', x: -4.1, z: 2.95, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
       // 會議室椅子（sitting）— South 排面朝桌子
-      { id: 'meeting-s0', x: -5.4, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'meeting-s1', x: -4.75, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'meeting-s2', x: -4.1, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'meeting-s0', x: -5.4, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'meeting-s1', x: -4.75, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'meeting-s2', x: -4.1, z: 5.05, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
       // 牢房沙發（sitting）— 面朝門口（朝北 = 朝 -z 方向）
-      { id: 'cell-sofa-1', x: 0.8, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'cell-sofa-2', x: 2.4, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'cell-sofa-3', x: 4.0, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'cell-sofa-4', x: 5.6, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
-      { id: 'cell-sofa-5', x: 7.2, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: 0 },
+      { id: 'cell-sofa-1', x: 0.8, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'cell-sofa-2', x: 2.4, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'cell-sofa-3', x: 4.0, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'cell-sofa-4', x: 5.6, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
+      { id: 'cell-sofa-5', x: 7.2, z: 6.55, type: 'sitting', anims: ['sitting-idle', 'sitting-laughing'], duration: [8, 20], facing: Math.PI },
       // 會議室內站立
       { id: 'meeting-stand', x: -5, z: 4, type: 'standing', anims: ['standing-idle', 'arm-stretching', 'looking'], duration: [5, 12], facing: 0 },
     ];
@@ -676,7 +676,7 @@
       character.mixamoModel.updateMatrixWorld(true);
 
       // IK for ALL states: seated targets keyboard, non-seated targets Mixamo hand position
-      const seatedStates = ['working', 'idle', 'sitting', 'sitting-idle', 'closed'];
+      const seatedStates = ['working', 'idle', 'sitting', 'sitting-idle', 'sitting-laughing', 'closed'];
       const isSeated = seatedStates.includes(character.currentState);
       const useIK = character.useIK && character.ikChains && character.ikChains.length > 0;
 
@@ -1214,7 +1214,7 @@
       const clip = character.animations[animationName];
       if (!clip) return;
 
-      const seatedAnims = ['idle', 'sitting-idle', 'closed', 'working', 'sitting'];
+      const seatedAnims = ['idle', 'sitting-idle', 'closed', 'working', 'sitting', 'sitting-laughing'];
 
       if (character.currentAction) {
         character.currentAction.stop();
@@ -1454,13 +1454,35 @@
           if (character.crowdAgent) {
             character.crowdAgent.resetMoveTarget();
           }
-          const animName = poi.anims[Math.floor(Math.random() * poi.anims.length)];
           character.model.rotation.y = poi.facing;
-          const isLoopOnce = ANIM_LOOP_ONCE.has(animName);
-          switchAnimation(character, animName, { loopOnce: isLoopOnce });
-          const [minDur, maxDur] = poi.duration;
-          character.aiTimer = minDur + Math.random() * (maxDur - minDur);
-          character.aiState = 'ROAMING_IDLE';
+
+          if (poi.type === 'sitting') {
+            // Play sit-down transition animation first
+            switchAnimation(character, 'sitting', { loopOnce: true });
+            character.aiState = 'SITTING_TRANSITION';
+          } else {
+            // Standing POI — original logic
+            const animName = poi.anims[Math.floor(Math.random() * poi.anims.length)];
+            const isLoopOnce = ANIM_LOOP_ONCE.has(animName);
+            switchAnimation(character, animName, { loopOnce: isLoopOnce });
+            const [minDur, maxDur] = poi.duration;
+            character.aiTimer = minDur + Math.random() * (maxDur - minDur);
+            character.aiState = 'ROAMING_IDLE';
+          }
+          break;
+        }
+        case 'SITTING_TRANSITION': {
+          // Wait for sit-down animation to finish (LoopOnce + clampWhenFinished → paused=true)
+          if (character.currentAction && character.currentAction.paused) {
+            const poi = character.currentPOI;
+            if (!poi) { character.aiState = 'ROAMING_CHOOSE'; return; }
+            const animName = poi.anims[Math.floor(Math.random() * poi.anims.length)];
+            const isLoopOnce = ANIM_LOOP_ONCE.has(animName);
+            switchAnimation(character, animName, { loopOnce: isLoopOnce });
+            const [minDur, maxDur] = poi.duration;
+            character.aiTimer = minDur + Math.random() * (maxDur - minDur);
+            character.aiState = 'ROAMING_IDLE';
+          }
           break;
         }
         case 'ROAMING_IDLE': {
