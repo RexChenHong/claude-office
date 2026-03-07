@@ -1004,6 +1004,14 @@
         addBox(4, 1.5, 7, 8, 3, 0.3);              // 後牆 z=7, x: 0 ~ 8
         addBox(0, 1.5, 5.5, 0.3, 3, 3);            // 左牆 x=0, z: 4 ~ 7
 
+        // 辦公室家具碰撞
+        addBox(6.0, 0.5, -7.0, 0.6, 1, 0.5);      // 影印機
+        addBox(-6.0, 0.5, -7.0, 0.4, 1, 0.4);     // 飲水機
+        addBox(2.0, 0.5, -2.5, 0.5, 1, 0.5);      // 大盆栽右
+        addBox(-2.0, 0.5, -2.5, 0.5, 1, 0.5);     // 大盆栽左
+        addBox(0.3, 0.5, 4.5, 0.3, 1, 0.3);       // 小盆栽-牢房
+        addBox(-2.2, 0.5, 4.0, 0.3, 1, 0.3);      // 小盆栽-會議室
+
         const result = threeToSoloNavMesh(wallMeshes, {
           cs: 0.15,              // cell size 15cm
           ch: 0.1,               // cell height 10cm
@@ -1032,6 +1040,26 @@
       } catch (e) {
         console.error('[NavMesh] Recast 初始化失敗', e);
       }
+
+      // ========== 載入辦公室家具 ==========
+      const furnitureItems = [
+        { file: 'models/furniture/copier.glb', x: 6.0, z: -7.0, rotY: 0 },
+        { file: 'models/furniture/watercooler.glb', x: -6.0, z: -7.0, rotY: 0 },
+        { file: 'models/furniture/plantlarge.glb', x: 2.0, z: -2.5, rotY: 0 },
+        { file: 'models/furniture/plantlarge.glb', x: -2.0, z: -2.5, rotY: 0 },
+        { file: 'models/furniture/plantsmall.glb', x: 0.3, z: 4.5, rotY: 0 },
+        { file: 'models/furniture/plantsmall.glb', x: -2.2, z: 4.0, rotY: 0 },
+      ];
+      const furnitureLoader = new GLTFLoader();
+      furnitureItems.forEach(item => {
+        furnitureLoader.load(item.file, (gltf) => {
+          const model = gltf.scene;
+          model.position.set(item.x, 0, item.z);
+          model.rotation.y = item.rotY;
+          scene.add(model);
+        });
+      });
+      console.log('[Furniture] 載入 6 件辦公室家具');
 
       console.log('[Three.js] 場景初始化完成');
     }
