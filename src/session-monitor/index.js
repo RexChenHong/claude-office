@@ -239,6 +239,28 @@ function checkIdleStatus() {
   });
 }
 
+/**
+ * 定期清理過期 session（10 分鐘無更新）
+ */
+function cleanupStaleSessions() {
+  const now = Date.now();
+  const maxAge = 10 * 60 * 1000; // 10 minutes
+
+  sessions.forEach((session, id) => {
+    try {
+      const stats = statSync(session.filePath);
+      const fileAge = now - stats.mtimeMs;
+      if (fileAge > maxAge) {
+        console.log(`[Session] 過期清理: ${id} (${Math.round(fileAge / 60000)}分鐘無更新)`);
+        closeSession(session.filePath);
+      }
+    } catch (err) {
+      // File no longer exists, clean up
+      closeSession(session.filePath);
+    }
+  });
+}
+
 // ============ 檔案監控 ============
 
 function initWatcher() {
@@ -256,19 +278,25 @@ function initWatcher() {
     depth: 99, // 遞歸深度
   });
 
+  // Only track top-level .jsonl files (not subagents/)
+  const isTopLevelSession = (path) => {
+    if (!path.endsWith('.jsonl')) return false;
+    if (path.includes('/subagents/')) return false;
+    return true;
+  };
+
   watcher
     .on('add', (path) => {
-      if (!path.endsWith('.jsonl')) return; // 只處理 .jsonl 檔案
+      if (!isTopLevelSession(path)) return;
       console.log(`[Watcher] 新增檔案: ${path}`);
       registerSession(path);
     })
     .on('change', (path) => {
-      if (!path.endsWith('.jsonl')) return;
-      console.log(`[Watcher] 變更檔案: ${path}`);
+      if (!isTopLevelSession(path)) return;
       updateSessionWorking(path);
     })
     .on('unlink', (path) => {
-      if (!path.endsWith('.jsonl')) return;
+      if (!isTopLevelSession(path)) return;
       console.log(`[Watcher] 刪除檔案: ${path}`);
       closeSession(path);
     })
@@ -303,11 +331,15 @@ function main() {
   // 定期檢查閒置狀態
   const idleChecker = setInterval(checkIdleStatus, CONFIG.checkInterval);
 
+  // 定期清理過期 session
+  const staleChecker = setInterval(cleanupStaleSessions, 30 * 1000);
+
   // 優雅關閉
   process.on('SIGINT', () => {
     console.log('\n[Main] 收到 SIGINT，正在關閉...');
 
     clearInterval(idleChecker);
+    clearInterval(staleChecker);
     watcher.close();
 
     if (wss) {
