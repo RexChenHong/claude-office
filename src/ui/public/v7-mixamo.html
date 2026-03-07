@@ -1458,11 +1458,24 @@
         }
       });
 
-      // 確保每個 Session 都有對應角色
+      // 確保每個 Session 都有對應角色（綁定現有 demo 角色，不新建）
       for (const [sessionId, session] of sessions) {
         if (!characters.has(sessionId)) {
-          const index = Array.from(sessions.keys()).indexOf(sessionId);
-          await loadCharacterModel(sessionId, index);
+          // Rebind an available demo character
+          let bound = false;
+          for (const [key, char] of characters) {
+            if (key.startsWith('demo-') && !char.boundSessionId) {
+              characters.delete(key);
+              characters.set(sessionId, char);
+              char.boundSessionId = sessionId;
+              bound = true;
+              console.log(`[Session] Sync: bound ${key} → ${sessionId} (${session.project})`);
+              break;
+            }
+          }
+          if (!bound) {
+            console.log(`[Session] Sync: no available demo character for ${sessionId}`);
+          }
         }
       }
 
